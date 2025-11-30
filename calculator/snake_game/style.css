@@ -1,0 +1,68 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Press Start 2P', cursive; /* A retro-style font */
+    transition: background-color 0.3s ease;
+}
+
+body.light-theme {
+    background-color: #f0f0f0;
+    color: #333;
+}
+
+body.dark-theme {
+    background-color: #333;
+    color: #f0f0f0;
+}
+
+.game-container {
+    background-color: #c0c0c0;
+    border: 5px solid #808080;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.dark-theme .game-container {
+    background-color: #444;
+    border-color: #666;
+}
+
+h1 {
+    margin-top: 0;
+    color: #333;
+    transition: color 0.3s ease;
+}
+
+.dark-theme h1 {
+    color: #f0f0f0;
+}
+
+canvas {
+    background-color: #a0a0a0;
+    border: 2px solid #666;
+    display: block;
+    margin: 20px auto;
+}
+
+.dark-theme canvas {
+    background-color: #222;
+    border-color: #444;
+}
+
+.controls {
+    margin-bottom: 10px;
+}
+
+#themeToggle {
+    margin-left: 10px;
+}
+
+p {
+    font-size: 0.9em;
+}

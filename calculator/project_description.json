@@ -1,0 +1,11 @@
+{
+    "project_name": "calculator",
+    "last_updated": "2025-11-30T20:05:40.800037",
+    "key_files": {
+        "snake_game/.gitkeep": "Module handling .gitkeep functionality",
+        "snake_game/index.html": "Module handling index.html functionality",
+        "snake_game/style.css": "Module handling style.css functionality",
+        "snake_game/script.js": "Module handling script functionality"
+    },
+    "debug_notes": {}
+}
