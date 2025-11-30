@@ -3,11 +3,19 @@
 ## Overview
 CodeCrafter is a local command-line AI coding agent powered by Google Gemini 2.5 Flash. It provides an interactive CLI interface for reading, writing, executing, and debugging code across multiple languages (Python, C++, JavaScript, HTML/CSS) within a sandboxed working directory.
 
-**Current State:** Imported from external repository, ready for use in Replit environment.
+**Current State:** Fully functional with enhanced CLI interface.
 
 **Purpose:** Learning tool and rapid prototyping assistant for software development tasks.
 
 ## Recent Changes
+- **2025-11-30**: Enhanced CLI with user-friendly interface
+  - Added stylish intro/exit banners with box-drawing characters
+  - Added personalized experience with user name prompt at startup
+  - Enhanced verbose mode with better formatting and token usage display
+  - Renamed project directory from "calculator" to "workspace" for generic use
+  - Improved function call output with arrow indicators
+  - Added styled response boxes for agent output
+
 - **2025-11-30**: Initial import to Replit environment
   - Configured workflow for CLI-based interaction
   - Installed dependencies via uv (google-genai, python-dotenv, sift-stack-py)
@@ -15,19 +23,22 @@ CodeCrafter is a local command-line AI coding agent powered by Google Gemini 2.5
   - Project uses pyproject.toml for dependency management
 
 ## User Preferences
-- Not yet established - first session
+- Prefers minimal, cool CLI design with nerd font-style box characters
+- Likes personalized experience (user name prompts)
 
 ## Project Architecture
 
 ### Core Components
-1. **main.py**: Main agent loop and CLI interface
+1. **main.py**: Main agent loop and CLI interface (v1.3.0)
+   - Stylish intro/exit banners with box-drawing characters
+   - Personalized user name prompt at startup
    - Handles conversation history with Gemini API
    - Implements agentic loop (max 20 iterations)
-   - Provides verbose mode for debugging
+   - Enhanced verbose mode with token usage display
    - Enforces security boundaries for file operations
 
 2. **config.py**: Global configuration
-   - WORKING_DIR: Points to "calculator/" sandbox directory
+   - WORKING_DIR: Points to "workspace/" sandbox directory
    - AUTO_UPDATE_DESCRIPTION: Enables automatic project metadata updates
    - MAX_FILE_CHARS: 10,000 character limit for file reads
 
