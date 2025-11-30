@@ -6,8 +6,8 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Working directory - Change this to point to your target project
-# Default: "calculator" folder in the same directory as this file
-PROJECT_FOLDER_NAME = "calculator"
+# Default: "workspace" folder in the same directory as this file
+PROJECT_FOLDER_NAME = "workspace"
 WORKING_DIR = os.path.join(BASE_DIR, PROJECT_FOLDER_NAME)
 
 # Project description file settings

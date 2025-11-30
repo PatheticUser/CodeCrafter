@@ -19,6 +19,58 @@ from functions.get_project_description import (
 )
 from functions.update_project_description import scan_and_rebuild_description
 
+VERSION = "1.3.0"
+
+def clear_screen():
+    os.system("cls" if os.name == "nt" else "clear")
+
+def show_intro_banner(user_name: str):
+    clear_screen()
+    print()
+    print("  ╭──────────────────────────────────────────────────────────────╮")
+    print(f"  │   CodeCrafter Agent v{VERSION}  •  Project-Aware Assistant   │")
+    print("  ├──────────────────────────────────────────────────────────────┤")
+    print("  │   Model: gemini-2.5-flash   │   Mode: Interactive CLI      │")
+    print("  │   Type 'exit' or 'quit' anytime to close                    │")
+    print("  ╰──────────────────────────────────────────────────────────────╯")
+    print()
+    print(f"  Hello {user_name}, CodeCrafter is online — synced and ready <3")
+    print()
+
+def show_exit_banner(user_name: str):
+    print()
+    print("  ╭──────────────────────────────────────────────────────────────╮")
+    print("  │              Shutting down CodeCrafter Agent...              │")
+    print("  ├──────────────────────────────────────────────────────────────┤")
+    print("  │   Session ended. All context cleared.                        │")
+    print(f"  │   See you soon, {user_name} — keep building smart.".ljust(64) + "│")
+    print("  ╰──────────────────────────────────────────────────────────────╯")
+    print()
+
+def show_verbose_header(step: int, action: str = "Calling model"):
+    print()
+    print(f"  ┌─ Step {step} ─────────────────────────────────────────────────┐")
+    print(f"  │  {action}...")
+    print("  └───────────────────────────────────────────────────────────────┘")
+
+def show_verbose_info(label: str, value: str):
+    print(f"  ├─ {label}: {value}")
+
+def show_verbose_result(result: str):
+    truncated = result[:200] + "..." if len(result) > 200 else result
+    print(f"  └─ Result: {truncated}")
+
+def get_user_name() -> str:
+    print()
+    print("  ╭──────────────────────────────────────────────────────────────╮")
+    print("  │              Welcome to CodeCrafter Agent!                   │")
+    print("  ╰──────────────────────────────────────────────────────────────╯")
+    print()
+    user_name = input("  What's your name? → ").strip()
+    if not user_name:
+        user_name = "Developer"
+    return user_name
+
 # --- Configuration & Initialization ---
 
 # Load environment variables
@@ -27,7 +79,6 @@ api_key = os.environ.get("GEMINI_API_KEY")
 
 try:
     if not api_key:
-        # Improved: Raise a more user-friendly error
         raise ValueError(
             "GEMINI_API_KEY environment variable not found. Please set it in your .env file."
         )
@@ -36,15 +87,22 @@ except Exception as e:
     print(f"Error initializing Gemini client: {e}")
     sys.exit(1)
 
-# Parse CLI flags (Simplified to check for verbose, and usage is now part of verbose)
+# Parse CLI flags
 args = sys.argv[1:]
 verbose_mode = "--verbose" in args
 rebuild_description = "--rebuild-description" in args
-# usage_mode is now implicitly controlled by verbose_mode for cleaner UI separation
+
+# Get user's name for personalized experience
+USER_NAME = get_user_name()
+
+# Show intro banner
+show_intro_banner(USER_NAME)
 
 if verbose_mode:
-    print(f"Working Directory: {WORKING_DIR}")
-    print(f"Auto-update Description: {AUTO_UPDATE_DESCRIPTION}")
+    print("  ┌─ Verbose Mode ──────────────────────────────────────────────┐")
+    print(f"  │  Working Directory: {WORKING_DIR}")
+    print(f"  │  Auto-update Description: {AUTO_UPDATE_DESCRIPTION}")
+    print("  └───────────────────────────────────────────────────────────────┘")
 
 # If --rebuild-description flag is set, rebuild the project description
 if rebuild_description:
@@ -146,11 +204,15 @@ messages = []
 # --- Main Agent Loop ---
 
 if verbose_mode:
-    print("\n--- Verbose Mode: DEBUGGING AND USAGE DATA ENABLED ---\n")
+    print()
+    print("  ╭─ Debug Mode ────────────────────────────────────────────────╮")
+    print("  │   Verbose output enabled — showing tool calls & usage data  │")
+    print("  ╰─────────────────────────────────────────────────────────────╯")
 
 while True:
-    user_prompt = input("\nRameez: ")
+    user_prompt = input(f"\n  {USER_NAME}: ")
     if user_prompt.lower() in ["e", "q", "exit", "quit"]:
+        show_exit_banner(USER_NAME)
         break
 
     # Improvement: Append the new user message to the existing history
@@ -166,7 +228,7 @@ while True:
     # --- Agentic Loop (max 20 steps) ---
     for step in range(20):
         if verbose_mode:
-            print(f"\n[Agentic Step {step + 1}] Calling model...")
+            show_verbose_header(step + 1, "Calling model")
 
         try:
             response = client.models.generate_content(
@@ -211,14 +273,11 @@ while True:
                     display_args = ", ".join(f"{k}='{v}'" for k, v in func_args.items())
 
                 # Show a glance of the action for the end user
-                # This is NOT recommended as it uses the old, fragile logic.
-                print(
-                    f"Calling {func_name} for {file_path or 'context'}"
-                )
+                print(f"  → {func_name}({file_path or 'context'})")
 
                 # Show full arguments only in verbose mode
                 if verbose_mode:
-                    print(f" - Full Function Call: {func_name}({func_args})")
+                    show_verbose_info("Function", f"{func_name}({func_args})")
 
                 try:
                     # Function execution logic
@@ -248,7 +307,7 @@ while True:
 
                 # Print result to the user only in verbose mode
                 if verbose_mode:
-                    print(f" - Function result: {result}")
+                    show_verbose_result(str(result))
 
                 # 3. Feedback to agent (so it knows tool outcome) - ALWAYS send the result to the model
                 messages.append(
@@ -260,23 +319,29 @@ while True:
 
         # 4. If final text output exists, finish loop
         elif response.text:
-            print(f"\n{AGENT_NAME}:\n", response.text)
+            print()
+            print(f"  ╭─ {AGENT_NAME} ─────────────────────────────────────────────────╮")
+            print()
+            for line in response.text.split('\n'):
+                print(f"    {line}")
+            print()
+            print("  ╰─────────────────────────────────────────────────────────────────╯")
             break
 
         # 5. Check for max steps
         if step == 19:
-            print(
-                f"\n[{AGENT_NAME} reached max steps ({step + 1}) without providing a final response. Resetting conversation.]"
-            )
+            print()
+            print("  ╭─ Warning ───────────────────────────────────────────────────╮")
+            print(f"  │   {AGENT_NAME} reached max steps ({step + 1}). Resetting...          │")
+            print("  ╰─────────────────────────────────────────────────────────────╯")
             messages = []
             break
 
         # 6. Usage info each iteration if in verbose mode
         if verbose_mode and hasattr(response, "usage_metadata"):
             usage = response.usage_metadata
-            print("--- Usage Metadata ---")
-            print(f"Prompt Tokens: {usage.prompt_token_count}")
-            print(f"Response Tokens: {usage.candidates_token_count}")
-            print(
-                f"Total Tokens: {usage.prompt_token_count + usage.candidates_token_count}"
-            )
+            total = usage.prompt_token_count + usage.candidates_token_count
+            print()
+            print("  ┌─ Token Usage ─────────────────────────────────────────────┐")
+            print(f"  │  Prompt: {usage.prompt_token_count:,}  │  Response: {usage.candidates_token_count:,}  │  Total: {total:,}")
+            print("  └───────────────────────────────────────────────────────────┘")
