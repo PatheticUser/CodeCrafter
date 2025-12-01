@@ -19,7 +19,45 @@ from functions.get_project_description import (
 )
 from functions.update_project_description import scan_and_rebuild_description
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
+
+class Icons:
+    AGENT = "󰚩"  # 󰚩 nf-md-robot
+    CODE = ""       #  nf-seti-code
+    FILE = ""       #  nf-fa-file
+    FOLDER = ""     #  nf-fa-folder
+    SUCCESS = ""    #  nf-fa-check
+    ERROR = ""      #  nf-fa-times
+    WARNING = ""    #  nf-fa-warning
+    INFO = ""       #  nf-fa-info_circle
+    PROMPT = ""     #  nf-pl-right_hard_divider
+    ARROW = ""      #  nf-fa-arrow_right
+    GEAR = ""       #  nf-fa-gear
+    PLAY = ""       #  nf-fa-play
+    STOP = ""       #  nf-fa-stop
+    TOKENS = "󰊖" # 󰊖 nf-md-coins
+    TIME = ""       #  nf-fa-clock_o
+    SEARCH = ""     #  nf-fa-search
+    WRITE = ""      #  nf-fa-pencil_square
+    DELETE = ""     #  nf-fa-trash
+    DEBUG = ""      #  nf-fa-bug
+
+
+class Colors:
+    CYAN = "\033[36m"
+    MAGENTA = "\033[35m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    RED = "\033[31m"
+    DIM = "\033[2m"
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+
+def c(text: str, color: str) -> str:
+    return f"{color}{text}{Colors.RESET}"
+
+def dim(text: str) -> str:
+    return c(text, Colors.DIM)
 
 def clear_screen():
     os.system("cls" if os.name == "nt" else "clear")
@@ -27,46 +65,85 @@ def clear_screen():
 def show_intro_banner(user_name: str):
     clear_screen()
     print()
-    print("  ╭──────────────────────────────────────────────────────────────╮")
-    print(f"  │   CodeCrafter Agent v{VERSION}  •  Project-Aware Assistant   │")
-    print("  ├──────────────────────────────────────────────────────────────┤")
-    print("  │   Model: gemini-2.5-flash   │   Mode: Interactive CLI      │")
-    print("  │   Type 'exit' or 'quit' anytime to close                    │")
-    print("  ╰──────────────────────────────────────────────────────────────╯")
+    print(f"  {c(Icons.AGENT, Colors.CYAN)} {c('CodeCrafter', Colors.BOLD)} {dim(f'v{VERSION}')}")
+    print(f"  {dim('─' * 45)}")
+    print(f"  {dim(Icons.GEAR)} Model: {c('gemini-2.5-flash', Colors.CYAN)}  {dim('│')}  Mode: {c('Interactive', Colors.GREEN)}")
+    print(f"  {dim(Icons.INFO)} Type {c('exit', Colors.YELLOW)} or {c('quit', Colors.YELLOW)} to close")
     print()
-    print(f"  Hello {user_name}, CodeCrafter is online — synced and ready <3")
+    print(f"  {Icons.SUCCESS} Ready — Hello {c(user_name, Colors.MAGENTA)}, let's build something great")
     print()
 
 def show_exit_banner(user_name: str):
     print()
-    print("  ╭──────────────────────────────────────────────────────────────╮")
-    print("  │              Shutting down CodeCrafter Agent...              │")
-    print("  ├──────────────────────────────────────────────────────────────┤")
-    print("  │   Session ended. All context cleared.                        │")
-    print(f"  │   See you soon, {user_name} — keep building smart.".ljust(64) + "│")
-    print("  ╰──────────────────────────────────────────────────────────────╯")
+    print(f"  {dim('─' * 45)}")
+    print(f"  {c(Icons.STOP, Colors.RED)} {c('Session ended', Colors.BOLD)}")
+    print(f"  {dim(Icons.INFO)} Context cleared • See you soon, {c(user_name, Colors.MAGENTA)}")
     print()
 
-def show_verbose_header(step: int, action: str = "Calling model"):
+def show_verbose_config(working_dir: str, auto_update: bool):
     print()
-    print(f"  ┌─ Step {step} ─────────────────────────────────────────────────┐")
-    print(f"  │  {action}...")
-    print("  └───────────────────────────────────────────────────────────────┘")
+    print(f"  {c(Icons.DEBUG, Colors.YELLOW)} {c('Verbose Mode', Colors.BOLD)}")
+    print(f"  {dim('├─')} Working Dir: {c(working_dir, Colors.CYAN)}")
+    print(f"  {dim('└─')} Auto-update: {c(str(auto_update), Colors.GREEN if auto_update else Colors.RED)}")
 
-def show_verbose_info(label: str, value: str):
-    print(f"  ├─ {label}: {value}")
+def show_verbose_step(step: int):
+    print()
+    print(f"  {c(Icons.PLAY, Colors.CYAN)} {c(f'Step {step}', Colors.BOLD)} {dim('calling model...')}")
 
-def show_verbose_result(result: str):
-    truncated = result[:200] + "..." if len(result) > 200 else result
-    print(f"  └─ Result: {truncated}")
+def show_verbose_function(func_name: str, func_args: dict):
+    print(f"  {dim('├─')} {Icons.CODE} {c(func_name, Colors.MAGENTA)}({dim(str(func_args)[:60] + '...' if len(str(func_args)) > 60 else str(func_args))})")
+
+def show_verbose_result(result: str, is_error: bool = False):
+    icon = Icons.ERROR if is_error else Icons.SUCCESS
+    color = Colors.RED if is_error else Colors.GREEN
+    truncated = result[:150] + "..." if len(result) > 150 else result
+    lines = truncated.split('\n')
+    if len(lines) > 3:
+        truncated = '\n'.join(lines[:3]) + "\n..."
+    print(f"  {dim('└─')} {c(icon, color)} {dim(truncated.replace(chr(10), ' '))}")
+
+def show_verbose_tokens(prompt: int, response: int):
+    total = prompt + response
+    print(f"  {dim('   ')} {c(Icons.TOKENS, Colors.DIM)} {dim(f'tokens: {prompt:,} in │ {response:,} out │ {total:,} total')}")
+
+def show_function_call(func_name: str, target: str):
+    icon_map = {
+        "get_files_info": Icons.FOLDER,
+        "get_file_content": Icons.FILE,
+        "write_file": Icons.WRITE,
+        "delete_file": Icons.DELETE,
+        "run_python_file": Icons.PLAY,
+        "run_cpp_file": Icons.PLAY,
+        "run_js_file": Icons.PLAY,
+        "preview_html_file": Icons.SEARCH,
+        "get_project_description": Icons.INFO,
+    }
+    icon = icon_map.get(func_name, Icons.CODE)
+    print(f"  {c(icon, Colors.DIM)} {c(Icons.ARROW, Colors.CYAN)} {func_name} {dim(f'({target})')}")
+
+def show_agent_response(response_text: str):
+    print()
+    print(f"  {c(Icons.AGENT, Colors.CYAN)} {c('CodeCrafter', Colors.BOLD)}")
+    print(f"  {dim('─' * 45)}")
+    for line in response_text.split('\n'):
+        print(f"  {line}")
+    print()
+
+def show_warning(message: str):
+    print()
+    print(f"  {c(Icons.WARNING, Colors.YELLOW)} {c('Warning', Colors.BOLD)}: {message}")
+
+def show_error(message: str):
+    print(f"  {c(Icons.ERROR, Colors.RED)} {message}")
 
 def get_user_name() -> str:
+    clear_screen()
     print()
-    print("  ╭──────────────────────────────────────────────────────────────╮")
-    print("  │              Welcome to CodeCrafter Agent!                   │")
-    print("  ╰──────────────────────────────────────────────────────────────╯")
+    print(f"  {c(Icons.AGENT, Colors.CYAN)} {c('CodeCrafter', Colors.BOLD)}")
+    print(f"  {dim('─' * 45)}")
+    print(f"  {dim(Icons.INFO)} Project-aware AI coding assistant")
     print()
-    user_name = input("  What's your name? → ").strip()
+    user_name = input(f"  {Icons.PROMPT} What's your name? {c('›', Colors.CYAN)} ").strip()
     if not user_name:
         user_name = "Developer"
     return user_name
@@ -99,10 +176,7 @@ USER_NAME = get_user_name()
 show_intro_banner(USER_NAME)
 
 if verbose_mode:
-    print("  ┌─ Verbose Mode ──────────────────────────────────────────────┐")
-    print(f"  │  Working Directory: {WORKING_DIR}")
-    print(f"  │  Auto-update Description: {AUTO_UPDATE_DESCRIPTION}")
-    print("  └───────────────────────────────────────────────────────────────┘")
+    show_verbose_config(WORKING_DIR, AUTO_UPDATE_DESCRIPTION)
 
 # If --rebuild-description flag is set, rebuild the project description
 if rebuild_description:
@@ -203,14 +277,9 @@ messages = []
 
 # --- Main Agent Loop ---
 
-if verbose_mode:
-    print()
-    print("  ╭─ Debug Mode ────────────────────────────────────────────────╮")
-    print("  │   Verbose output enabled — showing tool calls & usage data  │")
-    print("  ╰─────────────────────────────────────────────────────────────╯")
 
 while True:
-    user_prompt = input(f"\n  {USER_NAME}: ")
+    user_prompt = input(f"\n  {c(Icons.PROMPT, Colors.MAGENTA)} {c(USER_NAME, Colors.BOLD)} {c('›', Colors.CYAN)} ")
     if user_prompt.lower() in ["e", "q", "exit", "quit"]:
         show_exit_banner(USER_NAME)
         break
@@ -223,12 +292,12 @@ while True:
         # Insert the PROJECT_SUMMARY_MESSAGE as a system message at the start (index 0)
         messages.insert(0, PROJECT_SUMMARY_MESSAGE)
         if verbose_mode:
-            print("Injected Project Metadata into chat history as system message.")
+            print(f"  {dim('   ')} {c(Icons.INFO, Colors.DIM)} {dim('injected project metadata')}")
 
     # --- Agentic Loop (max 20 steps) ---
     for step in range(20):
         if verbose_mode:
-            show_verbose_header(step + 1, "Calling model")
+            show_verbose_step(step + 1)
 
         try:
             response = client.models.generate_content(
@@ -239,7 +308,7 @@ while True:
                 ),
             )
         except Exception as e:
-            print(f"Error generating content: {e}")
+            show_error(f"Model error: {e}")
             # Clean up history after a model error to allow a fresh start
             messages.pop()  # Remove the last user message
             if (
@@ -273,11 +342,11 @@ while True:
                     display_args = ", ".join(f"{k}='{v}'" for k, v in func_args.items())
 
                 # Show a glance of the action for the end user
-                print(f"  → {func_name}({file_path or 'context'})")
+                show_function_call(func_name, file_path or 'context')
 
                 # Show full arguments only in verbose mode
                 if verbose_mode:
-                    show_verbose_info("Function", f"{func_name}({func_args})")
+                    show_verbose_function(func_name, func_args)
 
                 try:
                     # Function execution logic
@@ -307,7 +376,8 @@ while True:
 
                 # Print result to the user only in verbose mode
                 if verbose_mode:
-                    show_verbose_result(str(result))
+                    is_error = "ERROR" in str(result) or "Error" in str(result)
+                    show_verbose_result(str(result), is_error)
 
                 # 3. Feedback to agent (so it knows tool outcome) - ALWAYS send the result to the model
                 messages.append(
@@ -319,29 +389,16 @@ while True:
 
         # 4. If final text output exists, finish loop
         elif response.text:
-            print()
-            print(f"  ╭─ {AGENT_NAME} ─────────────────────────────────────────────────╮")
-            print()
-            for line in response.text.split('\n'):
-                print(f"    {line}")
-            print()
-            print("  ╰─────────────────────────────────────────────────────────────────╯")
+            show_agent_response(response.text)
             break
 
         # 5. Check for max steps
         if step == 19:
-            print()
-            print("  ╭─ Warning ───────────────────────────────────────────────────╮")
-            print(f"  │   {AGENT_NAME} reached max steps ({step + 1}). Resetting...          │")
-            print("  ╰─────────────────────────────────────────────────────────────╯")
+            show_warning(f"{AGENT_NAME} reached max steps ({step + 1}). Resetting...")
             messages = []
             break
 
         # 6. Usage info each iteration if in verbose mode
         if verbose_mode and hasattr(response, "usage_metadata"):
             usage = response.usage_metadata
-            total = usage.prompt_token_count + usage.candidates_token_count
-            print()
-            print("  ┌─ Token Usage ─────────────────────────────────────────────┐")
-            print(f"  │  Prompt: {usage.prompt_token_count:,}  │  Response: {usage.candidates_token_count:,}  │  Total: {total:,}")
-            print("  └───────────────────────────────────────────────────────────┘")
+            show_verbose_tokens(usage.prompt_token_count, usage.candidates_token_count)

@@ -8,13 +8,19 @@ CodeCrafter is a local command-line AI coding agent powered by Google Gemini 2.5
 **Purpose:** Learning tool and rapid prototyping assistant for software development tasks.
 
 ## Recent Changes
+- **2025-12-01**: Professional CLI redesign with Nerd Font icons (v1.4.0)
+  - Added curated Nerd Font icon set (,,,,,, etc.)
+  - Implemented ANSI color scheme (cyan, magenta, green, yellow, red)
+  - Minimal, professional intro/exit banners with clean typography
+  - Enhanced verbose mode with structured diagnostic panels
+  - Context-aware function icons (file, folder, play, write, delete)
+  - Token usage display with compact formatting
+  - Dimmed secondary information for better visual hierarchy
+
 - **2025-11-30**: Enhanced CLI with user-friendly interface
-  - Added stylish intro/exit banners with box-drawing characters
   - Added personalized experience with user name prompt at startup
-  - Enhanced verbose mode with better formatting and token usage display
   - Renamed project directory from "calculator" to "workspace" for generic use
   - Improved function call output with arrow indicators
-  - Added styled response boxes for agent output
 
 - **2025-11-30**: Initial import to Replit environment
   - Configured workflow for CLI-based interaction
