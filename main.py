@@ -22,25 +22,25 @@ from functions.update_project_description import scan_and_rebuild_description
 VERSION = "1.4.0"
 
 class Icons:
-    AGENT = "󰚩"  # 󰚩 nf-md-robot
-    CODE = ""       #  nf-seti-code
-    FILE = ""       #  nf-fa-file
-    FOLDER = ""     #  nf-fa-folder
-    SUCCESS = ""    #  nf-fa-check
-    ERROR = ""      #  nf-fa-times
-    WARNING = ""    #  nf-fa-warning
-    INFO = ""       #  nf-fa-info_circle
-    PROMPT = ""     #  nf-pl-right_hard_divider
-    ARROW = ""      #  nf-fa-arrow_right
-    GEAR = ""       #  nf-fa-gear
-    PLAY = ""       #  nf-fa-play
-    STOP = ""       #  nf-fa-stop
-    TOKENS = "󰊖" # 󰊖 nf-md-coins
-    TIME = ""       #  nf-fa-clock_o
-    SEARCH = ""     #  nf-fa-search
-    WRITE = ""      #  nf-fa-pencil_square
-    DELETE = ""     #  nf-fa-trash
-    DEBUG = ""      #  nf-fa-bug
+    AGENT = ""
+    CODE = ""
+    FILE = ""
+    FOLDER = ""
+    SUCCESS = ""
+    ERROR = ""
+    WARNING = ""
+    INFO = ""
+    PROMPT = "󰶻"
+    ARROW = ""
+    GEAR = ""
+    PLAY = ""
+    STOP = ""
+    TOKENS = ""
+    TIME = "󰚭"
+    SEARCH = ""
+    WRITE = ""
+    DELETE = ""
+    DEBUG = ""
 
 
 class Colors:
@@ -62,50 +62,71 @@ def dim(text: str) -> str:
 def clear_screen():
     os.system("cls" if os.name == "nt" else "clear")
 
+
+# INTRO BANNER
 def show_intro_banner(user_name: str):
     clear_screen()
     print()
-    print(f"  {c(Icons.AGENT, Colors.CYAN)} {c('CodeCrafter', Colors.BOLD)} {dim(f'v{VERSION}')}")
-    print(f"  {dim('─' * 45)}")
-    print(f"  {dim(Icons.GEAR)} Model: {c('gemini-2.5-flash', Colors.CYAN)}  {dim('│')}  Mode: {c('Interactive', Colors.GREEN)}")
-    print(f"  {dim(Icons.INFO)} Type {c('exit', Colors.YELLOW)} or {c('quit', Colors.YELLOW)} to close")
+    print(f"  {c(Icons.AGENT, Colors.CYAN)}  {c('CodeCrafter', Colors.BOLD)}  {dim('v' + VERSION)}")
+    print(f"  {dim('─' * 52)}")
+    print(f"  {dim(Icons.GEAR)}  Model: {c('gemini-2.5-flash', Colors.CYAN)}  {dim('│')}  Mode: {c('Interactive', Colors.GREEN)}")
+    print(f"  {dim(Icons.INFO)}  Type {c('exit', Colors.YELLOW)} or {c('quit', Colors.YELLOW)} to close")
     print()
-    print(f"  {Icons.SUCCESS} Ready — Hello {c(user_name, Colors.MAGENTA)}, let's build something great")
+    print(f"  {c(Icons.SUCCESS, Colors.GREEN)}  Hello {c(user_name, Colors.MAGENTA)}, ready to build something solid")
     print()
 
+
+# EXIT BANNER
 def show_exit_banner(user_name: str):
     print()
-    print(f"  {dim('─' * 45)}")
-    print(f"  {c(Icons.STOP, Colors.RED)} {c('Session ended', Colors.BOLD)}")
-    print(f"  {dim(Icons.INFO)} Context cleared • See you soon, {c(user_name, Colors.MAGENTA)}")
+    print(f"  {dim('─' * 52)}")
+    print(f"  {c(Icons.STOP, Colors.RED)}  {c('Session Ended', Colors.BOLD)}")
+    print(f"  {dim(Icons.INFO)}  Context cleared, See you soon, {c(user_name, Colors.MAGENTA)}")
     print()
 
+
+# VERBOSE CONFIG
 def show_verbose_config(working_dir: str, auto_update: bool):
     print()
-    print(f"  {c(Icons.DEBUG, Colors.YELLOW)} {c('Verbose Mode', Colors.BOLD)}")
-    print(f"  {dim('├─')} Working Dir: {c(working_dir, Colors.CYAN)}")
-    print(f"  {dim('└─')} Auto-update: {c(str(auto_update), Colors.GREEN if auto_update else Colors.RED)}")
+    print(f"  {c(Icons.DEBUG, Colors.YELLOW)}  {c('Verbose Mode', Colors.BOLD)}")
+    print(f"  {dim('  ├─')}  Working Dir: {c(working_dir, Colors.CYAN)}")
+    print(f"  {dim('  └─')}  Auto-update: {c(str(auto_update), Colors.GREEN if auto_update else Colors.RED)}")
 
+
+# VERBOSE STEP
 def show_verbose_step(step: int):
     print()
-    print(f"  {c(Icons.PLAY, Colors.CYAN)} {c(f'Step {step}', Colors.BOLD)} {dim('calling model...')}")
+    print(f"  {c(Icons.PLAY, Colors.CYAN)}  {c(f'Step {step}', Colors.BOLD)}  {dim('processing...')}")
 
+
+# VERBOSE FUNCTION
 def show_verbose_function(func_name: str, func_args: dict):
-    print(f"  {dim('├─')} {Icons.CODE} {c(func_name, Colors.MAGENTA)}({dim(str(func_args)[:60] + '...' if len(str(func_args)) > 60 else str(func_args))})")
+    args_display = str(func_args)
+    if len(args_display) > 60:
+        args_display = args_display[:60] + "..."
+    print(f"  {dim('  ├─')}  {Icons.CODE}  {c(func_name, Colors.MAGENTA)}({dim(args_display)})")
 
+
+# VERBOSE RESULT
 def show_verbose_result(result: str, is_error: bool = False):
     icon = Icons.ERROR if is_error else Icons.SUCCESS
     color = Colors.RED if is_error else Colors.GREEN
-    truncated = result[:150] + "..." if len(result) > 150 else result
-    lines = truncated.split('\n')
-    if len(lines) > 3:
-        truncated = '\n'.join(lines[:3]) + "\n..."
-    print(f"  {dim('└─')} {c(icon, color)} {dim(truncated.replace(chr(10), ' '))}")
 
+    truncated = result[:150] + "..." if len(result) > 150 else result
+    lines = truncated.split("\n")
+    if len(lines) > 3:
+        truncated = "\n".join(lines[:3]) + "\n..."
+
+    print(f"  {dim('  └─')}  {c(icon, color)}  {dim(truncated.replace(chr(10), ' '))}")
+
+
+# TOKEN DISPLAY
 def show_verbose_tokens(prompt: int, response: int):
     total = prompt + response
-    print(f"  {dim('   ')} {c(Icons.TOKENS, Colors.DIM)} {dim(f'tokens: {prompt:,} in │ {response:,} out │ {total:,} total')}")
+    print(f"     {c(Icons.TOKENS, Colors.DIM)}  {dim(f'tokens: {prompt:,} in │ {response:,} out │ {total:,} total')}")
 
+
+# FUNCTION CALL INDICATOR
 def show_function_call(func_name: str, target: str):
     icon_map = {
         "get_files_info": Icons.FOLDER,
@@ -118,36 +139,44 @@ def show_function_call(func_name: str, target: str):
         "preview_html_file": Icons.SEARCH,
         "get_project_description": Icons.INFO,
     }
-    icon = icon_map.get(func_name, Icons.CODE)
-    print(f"  {c(icon, Colors.DIM)} {c(Icons.ARROW, Colors.CYAN)} {func_name} {dim(f'({target})')}")
 
+    icon = icon_map.get(func_name, Icons.CODE)
+    print(f"  {c(icon, Colors.DIM)}  {c(Icons.ARROW, Colors.CYAN)}  {func_name}  {dim(f'({target})')}")
+
+
+# AGENT RESPONSE
 def show_agent_response(response_text: str):
     print()
-    print(f"  {c(Icons.AGENT, Colors.CYAN)} {c('CodeCrafter', Colors.BOLD)}")
-    print(f"  {dim('─' * 45)}")
-    for line in response_text.split('\n'):
+    print(f"  {c(Icons.AGENT, Colors.CYAN)}  {c('CodeCrafter', Colors.BOLD)}")
+    print(f"  {dim('─' * 52)}")
+    for line in response_text.split("\n"):
         print(f"  {line}")
     print()
 
+
+# WARNINGS
 def show_warning(message: str):
     print()
-    print(f"  {c(Icons.WARNING, Colors.YELLOW)} {c('Warning', Colors.BOLD)}: {message}")
+    print(f"  {c(Icons.WARNING, Colors.YELLOW)}  {c('Warning', Colors.BOLD)}: {message}")
 
+
+# ERRORS
 def show_error(message: str):
-    print(f"  {c(Icons.ERROR, Colors.RED)} {message}")
+    print(f"  {c(Icons.ERROR, Colors.RED)}  {message}")
 
+
+# PROMPT FOR NAME
 def get_user_name() -> str:
     clear_screen()
     print()
-    print(f"  {c(Icons.AGENT, Colors.CYAN)} {c('CodeCrafter', Colors.BOLD)}")
-    print(f"  {dim('─' * 45)}")
-    print(f"  {dim(Icons.INFO)} Project-aware AI coding assistant")
+    print(f"  {c(Icons.AGENT, Colors.CYAN)}  {c('CodeCrafter', Colors.BOLD)}")
+    print(f"  {dim('─' * 52)}")
+    print(f"  {dim(Icons.INFO)}  Project-aware AI coding assistant")
     print()
-    user_name = input(f"  {Icons.PROMPT} What's your name? {c('›', Colors.CYAN)} ").strip()
+    user_name = input(f"  {Icons.PROMPT}  Your name {c('›', Colors.CYAN)} ").strip()
     if not user_name:
         user_name = "Developer"
     return user_name
-
 # --- Configuration & Initialization ---
 
 # Load environment variables
