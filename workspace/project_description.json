@@ -1,10 +1,10 @@
 {
     "project_name": "calculator",
-    "last_updated": "2025-12-03T11:08:29.820789",
+    "last_updated": "2025-12-11T15:33:47.727803",
     "key_files": {
-        "calculator/index.html": "Module handling index.html functionality",
-        "calculator/style.css": "Module handling style.css functionality",
-        "calculator/script.js": "Module handling script functionality"
+        "scraper/shopify_scraper.py": "Utility module with 1 function(s) for shopify scraper operations",
+        "scraper/requirements.txt": "Module handling requirements.txt functionality",
+        "scraper/install_deps.py": "Module handling install deps functionality"
     },
     "debug_notes": {}
 }
