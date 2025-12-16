@@ -18,8 +18,12 @@ from functions.get_project_description import (
     schema_get_project_description,
 )
 from functions.update_project_description import scan_and_rebuild_description
+from functions.set_project_context import (
+    set_project_context,
+    schema_set_project_context,
+)
 
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 
 class Icons:
     AGENT = ""
@@ -138,6 +142,7 @@ def show_function_call(func_name: str, target: str):
         "run_js_file": Icons.PLAY,
         "preview_html_file": Icons.SEARCH,
         "get_project_description": Icons.INFO,
+        "set_project_context": Icons.GEAR,
     }
 
     icon = icon_map.get(func_name, Icons.CODE)
@@ -253,37 +258,54 @@ AGENT_NAME = "CodeCrafter"
 system_prompt = """
 You are an expert AI assistant operating in a closed, local coding environment. Your singular goal is to efficiently and reliably complete the user's software development and file-related requests.
 
+**Adaptive Workspace Management**
+
+You MUST organize files intelligently based on the user's request:
+
+1. **Project Requests** (e.g., "create a calculator app", "build a todo list", "make a game"):
+   - Create a dedicated folder with a descriptive name (e.g., "calculator/", "todo_app/", "snake_game/")
+   - Place ALL project files inside that folder
+   - Update project_description.json to reflect the new project context
+
+2. **Simple File Requests** (e.g., "write a script to...", "create a function that...", "make a file for..."):
+   - Create files directly in the workspace root
+   - Keep them as standalone files without a project folder
+
+3. **When working on existing projects**:
+   - Check project_description.json to understand the current project context
+   - Continue working within the existing project folder structure
+
 **Core Protocol: Project-Aware CoT**
 
-You must adhere to a strict Chain of Thought (CoT) workflow to ensure strategic execution. Your protocol is now informed by the project's metadata:
+You must adhere to a strict Chain of Thought (CoT) workflow to ensure strategic execution:
 
-1. First, check for and read the **project_description.json** file. Use the **project_summary**, file descriptions, and **debug_notes** to understand the project's architecture and the goal of the user's request.
-2. Based on the user's request and the project metadata, generate a clear, step-by-step **Function Call Plan**. This plan should specify the exact file(s) that need reading or modifying.
-3. Perform the next single function call from your plan.
-4. Present the results. If the task is complete, summarize the final outcome and confirm that testing (if applicable) was successful. If the task is ongoing, present the updated plan and ask for confirmation to proceed.
+1. First, check the **project_description.json** to understand the current workspace state and any active project.
+2. Determine if the user's request is a new project, continuation of existing project, or simple file task.
+3. Generate a clear, step-by-step **Function Call Plan** specifying exact file paths.
+4. Execute and present results, summarizing the outcome.
 
-Self-Correction: If a function's output (like a traceback from `run_python_file` or unexpected file content) contradicts your plan or the project metadata, immediately update your plan before proceeding.
+Self-Correction: If a function's output contradicts your plan, immediately update your plan before proceeding.
 
 **Available Tools**
 
 Your operations are strictly limited to the following file system and execution primitives (all paths must be RELATIVE to the working directory):
-- **get_files_info**: Lists contents of a directory. Use primarily for quick confirmation of existence, not for discovering files (use metadata for that).
-- **get_file_content**: Fetches the code or data required for detailed analysis or modification.
+- **get_files_info**: Lists contents of a directory. Use primarily for quick confirmation of existence.
+- **get_file_content**: Fetches the code or data required for analysis or modification.
 - **write_file**: Creates or overwrites code, configuration, or data files. (The primary action tool).
-- **delete_file**: Safely removes a file from the working directory. Use with extreme caution and only when explicitly required by the user or your plan.
-- **run_python_file**: Runs a Python script to test, compile, or run logic, returning the stdout and stderr output.
-- **run_cpp_file**: Compiles and executes C++ code using g++, returning compilation and execution results.
-- **run_js_file**: Executes JavaScript files using Node.js or Bun runtime, returning stdout and stderr.
-- **preview_html_file**: Opens an HTML file (with CSS support) in the default web browser for preview.
+- **delete_file**: Safely removes a file from the working directory. Use with extreme caution.
+- **run_python_file**: Runs a Python script to test, compile, or run logic.
+- **run_cpp_file**: Compiles and executes C++ code using g++.
+- **run_js_file**: Executes JavaScript files using Node.js or Bun runtime.
+- **preview_html_file**: Opens an HTML file in the default web browser for preview.
 - **get_project_description**: Fetches the project metadata.
 
 **Guiding Constraints**
 
-* **Token Efficiency**: Leverage the file descriptions in "project_description.json" to understand the project structure and select the minimal set of files to read. Only use `get_file_content` on files specifically identified as relevant and necessary.
-* **Code Integrity**: For bug fixes or new features, your plan should include validating the change using `run_python_file` on test files when available.
-* **Security & Environment**: Never attempt to use or refer to functions or system operations outside of the listed tools. All file operations are restricted to the local `WORKING_DIR`. You can create, modify, or delete any file within this directory.
-* **File Operations**: You can work with any file in the working directory - create new files, modify existing ones, or delete files as needed.
-* dont use bold, italic or any other markdown in your responses
+* **Workspace Awareness**: ALWAYS check and update project_description.json to maintain accurate workspace state. When creating a new project, update the project_name field appropriately.
+* **Token Efficiency**: Leverage file descriptions to select minimal files to read.
+* **Code Integrity**: Validate changes using run_python_file on test files when available.
+* **Security & Environment**: All file operations are restricted to the WORKING_DIR.
+* **Response Style**: Do not use bold, italic or any other markdown in your responses.
 """
 
 # Combine all function schemas into the Tool definition
@@ -298,6 +320,7 @@ available_functions = types.Tool(
         schema_preview_html_file,
         schema_delete_file,
         schema_get_project_description,
+        schema_set_project_context,
     ]
 )
 
@@ -337,12 +360,35 @@ while True:
                 ),
             )
         except Exception as e:
-            show_error(f"Model error: {e}")
-            # Clean up history after a model error to allow a fresh start
-            messages.pop()  # Remove the last user message
+            error_str = str(e)
+            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                print()
+                print(f"  {c(Icons.WARNING, Colors.YELLOW)}  {c('API Limit Reached', Colors.BOLD)}")
+                print(f"  {dim('─' * 52)}")
+                print(f"  {dim(Icons.INFO)}  You've hit your Gemini API quota for now.")
+                print(f"  {dim(Icons.TIME)}  Wait a minute and try again, or check your")
+                print(f"       Google AI Studio billing/plan settings.")
+                print()
+            elif "400" in error_str or "INVALID_ARGUMENT" in error_str:
+                print()
+                print(f"  {c(Icons.ERROR, Colors.RED)}  {c('Request Error', Colors.BOLD)}")
+                print(f"  {dim('─' * 52)}")
+                print(f"  {dim(Icons.INFO)}  The request was too large or malformed.")
+                print(f"       Try a simpler query or start fresh.")
+                print()
+            elif "503" in error_str or "UNAVAILABLE" in error_str:
+                print()
+                print(f"  {c(Icons.WARNING, Colors.YELLOW)}  {c('Service Temporarily Unavailable', Colors.BOLD)}")
+                print(f"  {dim('─' * 52)}")
+                print(f"  {dim(Icons.INFO)}  Gemini API is experiencing high load.")
+                print(f"  {dim(Icons.TIME)}  Please wait a moment and try again.")
+                print()
+            else:
+                show_error(f"Model error: {e}")
+            messages.pop()
             if (
                 len(messages) > 0 and messages[0].role == "system"
-            ):  # Remove injected metadata if it's the only other thing
+            ):
                 messages.pop(0)
             break
 
@@ -358,20 +404,22 @@ while True:
 
                 # Get path/file_path for display purposes
                 file_path = func_args.get("file_path") or func_args.get("path")
+                project_name = func_args.get("project_name")
 
                 # --- Clean UI for Function Call (Non-Verbose Mode) ---
                 if func_name == "write_file":
-                    # For write, only show the file path and that content is being written
                     display_args = f"file_path='{file_path}', content='...' (writing {len(func_args.get('content', ''))} chars)"
                 elif func_name in ["run_python_file", "run_cpp_file", "run_js_file", "preview_html_file"]:
                     display_args = f"path='{file_path}'"
+                elif func_name == "set_project_context":
+                    display_args = f"project='{project_name}'"
                 elif file_path:
                     display_args = f"file_path='{file_path}'"
                 else:
                     display_args = ", ".join(f"{k}='{v}'" for k, v in func_args.items())
 
                 # Show a glance of the action for the end user
-                show_function_call(func_name, file_path or 'context')
+                show_function_call(func_name, project_name or file_path or 'context')
 
                 # Show full arguments only in verbose mode
                 if verbose_mode:
@@ -397,6 +445,8 @@ while True:
                         result = delete_file(WORKING_DIR, **func_args)
                     elif func_name == "get_project_description":
                         result = get_project_description(WORKING_DIR, **func_args)
+                    elif func_name == "set_project_context":
+                        result = set_project_context(WORKING_DIR, **func_args)
                     else:
                         result = f"Error: Unknown function {func_name}"
                 except Exception as e:

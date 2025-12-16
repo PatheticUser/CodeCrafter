@@ -12,6 +12,24 @@
 If this project helped you, please give it a star <3
 
 ## Recent Changes
+
+- **2025-12-14**: Adaptive workspace and improved error handling (v1.5.0)
+  - Added `set_project_context` function for intelligent workspace organization
+  - Projects get dedicated folders (e.g., calculator/), simple files stay in root
+  - Friendly API error messages for quota limits, request errors, service issues
+  - Fixed stale project description (removed "calculator" reference)
+  - Added project_summary and active_folder fields for better context tracking
+  - Updated system prompt with adaptive workspace management instructions
+
+- **2025-12-01**: Professional CLI redesign with Nerd Font icons (v1.4.0)
+  - Added curated Nerd Font icon set (,,,,,, etc.)
+  - Implemented ANSI color scheme (cyan, magenta, green, yellow, red)
+  - Minimal, professional intro/exit banners with clean typography
+  - Enhanced verbose mode with structured diagnostic panels
+  - Context-aware function icons (file, folder, play, write, delete)
+  - Token usage display with compact formatting
+  - Dimmed secondary information for better visual hierarchy
+
 - **2025-11-23**: HTML/CSS preview support
   - Added `preview_html_file` tool for opening HTML files in browser
   - Automatic CSS file support when referenced in HTML

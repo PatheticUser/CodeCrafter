@@ -1,10 +1,12 @@
 {
-    "project_name": "calculator",
-    "last_updated": "2025-12-11T15:33:47.727803",
+    "project_name": "workspace",
+    "project_summary": "CodeCrafter workspace - files and projects are organized here. The \"scraper\" directory contains a complete and usable Shopify product scraper, along with its dependencies and an installation script.",
+    "active_folder": "workspace/",
+    "last_updated": "2025-12-16T07:33:26.651197",
     "key_files": {
-        "scraper/shopify_scraper.py": "Utility module with 1 function(s) for shopify scraper operations",
-        "scraper/requirements.txt": "Module handling requirements.txt functionality",
-        "scraper/install_deps.py": "Module handling install deps functionality"
+        "scraper/shopify_scraper.py": "Shopify product scraper utility",
+        "scraper/requirements.txt": "Dependencies for the scraper module",
+        "scraper/install_deps.py": "Script to install scraper dependencies"
     },
     "debug_notes": {}
 }
