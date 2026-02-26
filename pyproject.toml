@@ -8,4 +8,5 @@ dependencies = [
     "google-genai==1.12.1",
     "python-dotenv==1.1.0",
     "sift-stack-py>=0.9.1",
+    "Pillow>=10.0.0",
 ]

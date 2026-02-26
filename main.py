@@ -17,13 +17,15 @@ from functions.get_project_description import (
     get_project_description,
     schema_get_project_description,
 )
+from functions.analyze_image import analyze_image, schema_analyze_image
 from functions.update_project_description import scan_and_rebuild_description
 from functions.set_project_context import (
     set_project_context,
     schema_set_project_context,
 )
+from functions.clipboard_image import parse_image_input
 
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 
 class Icons:
     AGENT = ""
@@ -45,6 +47,7 @@ class Icons:
     WRITE = ""
     DELETE = ""
     DEBUG = ""
+    IMAGE = ""
 
 
 class Colors:
@@ -75,6 +78,7 @@ def show_intro_banner(user_name: str):
     print(f"  {dim('─' * 52)}")
     print(f"  {dim(Icons.GEAR)}  Model: {c('gemini-2.5-flash', Colors.CYAN)}  {dim('│')}  Mode: {c('Interactive', Colors.GREEN)}")
     print(f"  {dim(Icons.INFO)}  Type {c('exit', Colors.YELLOW)} or {c('quit', Colors.YELLOW)} to close")
+    print(f"  {dim(Icons.IMAGE)}  Use {c('/image', Colors.YELLOW)} or paste a file path to send images")
     print()
     print(f"  {c(Icons.SUCCESS, Colors.GREEN)}  Hello {c(user_name, Colors.MAGENTA)}, ready to build something solid")
     print()
@@ -143,6 +147,7 @@ def show_function_call(func_name: str, target: str):
         "preview_html_file": Icons.SEARCH,
         "get_project_description": Icons.INFO,
         "set_project_context": Icons.GEAR,
+        "analyze_image": Icons.IMAGE,
     }
 
     icon = icon_map.get(func_name, Icons.CODE)
@@ -297,6 +302,7 @@ Your operations are strictly limited to the following file system and execution 
 - **run_cpp_file**: Compiles and executes C++ code using g++.
 - **run_js_file**: Executes JavaScript files using Node.js or Bun runtime.
 - **preview_html_file**: Opens an HTML file in the default web browser for preview.
+- **analyze_image**: Analyzes image files using vision capabilities. Can describe images, extract text (OCR), identify objects, or answer questions about images. Supports PNG, JPG, JPEG, WebP, GIF, BMP formats.
 - **get_project_description**: Fetches the project metadata.
 
 **Guiding Constraints**
@@ -321,6 +327,7 @@ available_functions = types.Tool(
         schema_delete_file,
         schema_get_project_description,
         schema_set_project_context,
+        schema_analyze_image,
     ]
 )
 
@@ -336,8 +343,34 @@ while True:
         show_exit_banner(USER_NAME)
         break
 
-    # Improvement: Append the new user message to the existing history
-    messages.append(types.Content(role="user", parts=[types.Part(text=user_prompt)]))
+    # --- Parse user input for images (clipboard or file path) ---
+    parsed = parse_image_input(user_prompt)
+
+    if parsed.get("error"):
+        show_error(parsed["error"])
+        continue
+
+    if parsed["has_image"]:
+        # Build multimodal message: image + text
+        source_label = parsed["source"]
+        if source_label == "clipboard":
+            print(f"  {c(Icons.IMAGE, Colors.CYAN)}  Attached clipboard image")
+        else:
+            print(f"  {c(Icons.IMAGE, Colors.CYAN)}  Attached image: {c(parsed['file_path'], Colors.DIM)}")
+
+        user_parts = [
+            types.Part(
+                inline_data=types.Blob(
+                    data=parsed["image_bytes"],
+                    mime_type=parsed["mime_type"],
+                )
+            ),
+            types.Part(text=parsed["text"]),
+        ]
+        messages.append(types.Content(role="user", parts=user_parts))
+    else:
+        # Plain text message
+        messages.append(types.Content(role="user", parts=[types.Part(text=user_prompt)]))
 
     # --- Inject Project Metadata on the FIRST turn only ---
     if len(messages) == 1:
@@ -447,6 +480,8 @@ while True:
                         result = get_project_description(WORKING_DIR, **func_args)
                     elif func_name == "set_project_context":
                         result = set_project_context(WORKING_DIR, **func_args)
+                    elif func_name == "analyze_image":
+                        result = analyze_image(WORKING_DIR, **func_args)
                     else:
                         result = f"Error: Unknown function {func_name}"
                 except Exception as e:
@@ -459,12 +494,37 @@ while True:
                     show_verbose_result(str(result), is_error)
 
                 # 3. Feedback to agent (so it knows tool outcome) - ALWAYS send the result to the model
-                messages.append(
-                    types.Content(
-                        role="user",
-                        parts=[types.Part(text=f"Function call result: {result}")],
+                # Special handling for image analysis - send image data inline
+                if isinstance(result, dict) and result.get("type") == "image_analysis":
+                    # Send image as inline data with the prompt
+                    img_data = result["data"]
+                    # Handle both raw bytes and base64-encoded strings
+                    if isinstance(img_data, str):
+                        import base64 as b64
+                        img_data = b64.b64decode(img_data)
+                    messages.append(
+                        types.Content(
+                            role="user",
+                            parts=[
+                                types.Part(
+                                    inline_data=types.Blob(
+                                        data=img_data,
+                                        mime_type=result["mime_type"]
+                                    )
+                                ),
+                                types.Part(text=result["prompt"])
+                            ]
+                        )
                     )
-                )
+                    # Show user that image was loaded
+                    print(f"  {c(Icons.IMAGE, Colors.CYAN)}  Loaded workspace image: {result['file_name']}")
+                else:
+                    messages.append(
+                        types.Content(
+                            role="user",
+                            parts=[types.Part(text=f"Function call result: {result}")],
+                        )
+                    )
 
         # 4. If final text output exists, finish loop
         elif response.text:
