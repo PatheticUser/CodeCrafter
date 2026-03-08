@@ -1,17 +1,5 @@
 import os
 from datetime import datetime
-from google.genai import types
-
-
-def make_function_schema(name, description, params):
-    return {
-        "name": name,
-        "description": description,
-        "parameters": {
-            "type": "object",
-            "properties": params,
-        },
-    }
 
 
 def get_files_info(working_directory, directory=".", verbose=True):
@@ -28,8 +16,11 @@ def get_files_info(working_directory, directory=".", verbose=True):
     working_directory_abs = os.path.abspath(working_directory)
     target_directory_abs = os.path.abspath(target_directory)
 
-    # 1. Validate path is within working directory
-    if not target_directory_abs.startswith(working_directory_abs):
+    # 1. Validate path is within working directory (os.sep prevents edge cases)
+    if not (
+        target_directory_abs == working_directory_abs
+        or target_directory_abs.startswith(working_directory_abs + os.sep)
+    ):
         return f'Error: Cannot list "{directory}" as it is outside the permitted working directory'
 
     # 2. Validate directory exists
@@ -75,25 +66,32 @@ def get_files_info(working_directory, directory=".", verbose=True):
     return files_info
 
 
-# --- Schema for function calling (Gemini / LLM integration) ---
-schema_get_files_info = make_function_schema(
-    name="get_files_info",
-    description=(
-        "Recursively lists files in the specified directory (relative to the working directory). "
-        "Includes file size and modified date (without reading file content). "
-        "Ensures directory stays within the working directory."
-    ),
-    params={
-        "directory": {
-            "type": types.Type.STRING,
-            "description": (
-                "The directory to list files from, relative to the working directory. "
-                "If not provided, lists files in the working directory itself."
-            ),
-        },
-        "verbose": {
-            "type": types.Type.BOOLEAN,
-            "description": "Whether to print detailed info for each file while scanning.",
+# --- OpenAI-compatible tool schema for Groq ---
+schema_get_files_info = {
+    "type": "function",
+    "function": {
+        "name": "get_files_info",
+        "description": (
+            "Recursively lists files in the specified directory (relative to the working directory). "
+            "Includes file size and modified date (without reading file content). "
+            "Ensures directory stays within the working directory."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "directory": {
+                    "type": "string",
+                    "description": (
+                        "The directory to list files from, relative to the working directory. "
+                        "If not provided, lists files in the working directory itself."
+                    ),
+                },
+                "verbose": {
+                    "type": "boolean",
+                    "description": "Whether to print detailed info for each file while scanning.",
+                },
+            },
+            "required": [],
         },
     },
-)
+}

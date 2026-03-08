@@ -1,5 +1,4 @@
 import os
-from google.genai import types
 
 
 def write_file(working_directory, file_path, content):
@@ -14,8 +13,11 @@ def write_file(working_directory, file_path, content):
     working_directory_abs = os.path.abspath(working_directory)
     target_file_abs = os.path.abspath(os.path.join(working_directory, file_path))
 
-    # 1. Validate scope
-    if not target_file_abs.startswith(working_directory_abs):
+    # 1. Validate scope (os.sep prevents /workspace-evil matching /workspace)
+    if not (
+        target_file_abs == working_directory_abs
+        or target_file_abs.startswith(working_directory_abs + os.sep)
+    ):
         return f'Error: Cannot write to "{file_path}" as it is outside the permitted working directory'
 
     # 2. Ensure parent directories exist
@@ -26,66 +28,43 @@ def write_file(working_directory, file_path, content):
     except Exception as e:
         return f"Error: Failed to create directories for {file_path}: {e}"
 
-    # Check if this is a new file or modification
-    is_new_file = not os.path.exists(target_file_abs)
-    
     # 3. Write the content
     try:
         with open(target_file_abs, "w", encoding="utf-8") as f:
             f.write(content)
-        
-        result_msg = f'Successfully wrote to "{file_path}" ({len(content)} characters written)'
-        
-        # 4. Auto-update project description (if enabled and not the description file itself)
-        try:
-            from config import AUTO_UPDATE_DESCRIPTION, PROJECT_DESCRIPTION_FILE
-            if AUTO_UPDATE_DESCRIPTION and file_path != PROJECT_DESCRIPTION_FILE:
-                from functions.update_project_description import update_project_description
-                operation = "add" if is_new_file else "modify"
-                content_preview = content[:2000]  # First 2000 chars for summary
-                update_result = update_project_description(
-                    working_directory, operation, file_path, content_preview
-                )
-                result_msg += f" | {update_result}"
-        except Exception as e:
-            result_msg += f" | Warning: Could not update project description: {e}"
-        
+
+        result_msg = (
+            f'Successfully wrote to "{file_path}" ({len(content)} characters written)'
+        )
+
         return result_msg
     except Exception as e:
         return f"Error: Failed to write to {file_path}: {e}"
 
 
-# --- Schema for Gemini / LLM function calling ---
-def make_function_schema(name, description, params):
-    return {
-        "name": name,
-        "description": description,
+# --- OpenAI-compatible tool schema for Groq ---
+schema_write_file = {
+    "type": "function",
+    "function": {
+        "name": "write_file",
+        "description": (
+            "Safely writes the provided content to a file within the working directory. "
+            "Creates the file and any missing directories if necessary. "
+            "Returns a success or error message."
+        ),
         "parameters": {
             "type": "object",
-            "properties": params,
-        },
-    }
-
-
-schema_write_file = make_function_schema(
-    name="write_file",
-    description=(
-        "Safely writes the provided content to a file within the working directory. "
-        "Creates the file and any missing directories if necessary. "
-        "Returns a success or error message."
-    ),
-    params={
-        "file_path": {
-            "type": types.Type.STRING,
-            "description": "The relative path of the file to write inside the working directory.",
-        },
-        "working_directory": {
-            "type": types.Type.STRING,
-            "description": "The root directory that scopes file writes. Files outside this directory are not allowed.",
-        },
-        "content": {
-            "type": types.Type.STRING,
-            "description": "The content to write into the file.",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "The relative path of the file to write inside the working directory.",
+                },
+                "content": {
+                    "type": "string",
+                    "description": "The content to write into the file.",
+                },
+            },
+            "required": ["file_path", "content"],
         },
     },
-)
+}

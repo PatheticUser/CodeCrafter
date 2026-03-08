@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "WebSearch",
-      "WebFetch(domain:ai.google.dev)",
-      "Bash(python:*)"
-    ]
-  }
-}
