@@ -26,7 +26,7 @@ CodeCrafter is a local AI coding agent that runs in your terminal. It reads, wri
 
 1. **Clone the repository:**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/PatheticUser/CodeCrafter
    cd CodeCrafter
    ```
 
