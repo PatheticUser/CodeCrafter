@@ -1,58 +1,59 @@
-"""Animated spinner for CodeCrafter."""
+"""Animated spinner for CodeCrafter powered by Rich."""
 
 import random
 import threading
 import time
-import sys
+
+from rich.status import Status
 
 from config import (
-    SPINNER_FRAMES,
     SPINNER_WORDS,
-    SPINNER_FRAME_DURATION,
     SPINNER_WORD_SWITCH_INTERVAL,
 )
-from .display import c, Colors, dim
-
+from .display import console, Icons
 
 class Spinner:
-    """Animated terminal spinner with NerdFont circle animation."""
+    """Thread-safe rich status animated spinner."""
 
     def __init__(self):
         self._stop_event = threading.Event()
         self._thread = None
-        self._frame_index = 0
+        self._status = None
 
     def start(self):
         self._stop_event.clear()
+        self._status = Status(self._get_label(), console=console, spinner="dots")
+        self._status.start()
+        
         self._thread = threading.Thread(target=self._spin, daemon=True)
         self._thread.start()
 
-    def _spin(self):
+    def _get_label(self) -> str:
         word = random.choice(SPINNER_WORDS)
+        return f"[dim]{word}[/]"
+
+    def _spin(self):
         last_switch = time.time()
         try:
             while not self._stop_event.is_set():
-                # Shuffle word every N seconds
                 now = time.time()
                 if now - last_switch >= SPINNER_WORD_SWITCH_INTERVAL:
-                    word = random.choice(SPINNER_WORDS)
+                    if self._status:
+                        self._status.update(self._get_label())
                     last_switch = now
-                frame = SPINNER_FRAMES[self._frame_index % len(SPINNER_FRAMES)]
-                self._frame_index += 1
-                line = f"\r  {c(frame, Colors.CYAN)}  {dim(word)}"
-                sys.stdout.write(line)
-                sys.stdout.flush()
-                time.sleep(SPINNER_FRAME_DURATION)
+                time.sleep(0.1)
         finally:
-            # Clear the spinner line
-            sys.stdout.write("\r" + " " * 50 + "\r")
-            sys.stdout.flush()
+            if self._status:
+                self._status.stop()
+                self._status = None
 
     def stop(self):
         self._stop_event.set()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1)
-
+        if self._status:
+            self._status.stop()
+            self._status = None
 
 # Global spinner instance
 spinner = Spinner()

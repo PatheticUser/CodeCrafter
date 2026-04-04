@@ -3,16 +3,17 @@
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-CodeCrafter is a local AI coding agent that runs in your terminal. It reads, writes, executes, and debugs code in a sandboxed workspace — powered by [Ollama](https://ollama.com) cloud models for fast, private inference with automatic model fallback.
+CodeCrafter is a local AI coding agent that runs in your terminal. It reads, writes, executes, and debugs code in a sandboxed workspace — powered by [Ollama](https://ollama.com) cloud models for fast, private inference with automatic model fallback. Recently heavily refactored for production-ready reliability.
 
 ## Key Features
 
 - **Multi-Language Execution** — Run Python, C++, JavaScript, HTML/CSS, and more directly from the CLI
 - **Automatic Model Fallback** — If a model hits rate limits or errors out, seamlessly switches to the next one in the chain
 - **Intelligent Workspace** — Auto-creates project folders, isolates scripts, maintains workspace context
-- **Persistent Sessions** — Full conversation history preserved across restarts
-- **Self-Correcting** — Automatically detects errors, installs missing dependencies, and retries
+- **Persistent Sessions** — Full conversation history preserved safely across restarts
+- **Self-Correcting** — Automatically detects errors, installs missing dependencies, and retries natively via discrete loops
 - **Sandboxed Security** — Path traversal protection and dangerous command blocklist keep operations safe
+- **Modular Tool & Command Registries** — Clean architecture supporting easy extensibility
 
 ## Installation
 
@@ -45,20 +46,22 @@ CodeCrafter is a local AI coding agent that runs in your terminal. It reads, wri
 ## Usage
 
 ```bash
-uv run main.py
+uv run codecrafter
+# or
+python main.py
 ```
 
-For verbose mode with step-by-step tool inspection:
+For verbose mode with step-by-step tool inspection and logging:
 ```bash
-uv run main.py --verbose
+python main.py --verbose
 ```
 
 Use a specific model:
 ```bash
-uv run main.py --model qwen3-coder
+python main.py --model qwen3-coder
 ```
 
-### In-Agent Commands
+### Built-in Commands
 
 | Command | Description |
 |---------|-------------|
@@ -83,67 +86,50 @@ CodeCrafter uses a chain of Ollama cloud models. If the primary model fails (rat
 You can override the primary model with `--model`:
 
 ```bash
-# Use a shortcut
-uv run main.py --model nemotron-super
-
-# Or any Ollama model directly
-uv run main.py --model llama3:latest
+python main.py --model nemotron-super
+python main.py --model llama3:latest
 ```
 
 **Model shortcuts:** `qwen3.5`, `qwen3-coder`, `nemotron-super`
 
-To customize the fallback chain, edit `FALLBACK_MODELS` in `config.py`.
-
 ## Architecture
+
+The architecture has been refactored for enterprise-level extensibility, inspired by `Claude Code`:
 
 ```
 CodeCrafter/
-├── main.py              # Core agent loop and CLI
-├── config.py            # Configuration (models, limits, UI)
+├── main.py              # Thin CLI Entrypoint
+├── config.py            # Centralized Configuration
 ├── core/
-│   ├── api_manager.py   # Ollama client + model fallback
-│   └── workspace.py     # Workspace tree scanning
+│   ├── agent.py         # AgentLoop (Agentic step orchestrator)
+│   ├── api_manager.py   # Ollama client and model fallback
+│   ├── workspace.py     # Workspace tree scanning
+│   └── errors.py        # Error detection heuristics
+├── tools/               # Agent Tools (BaseTool pattern & Registry)
+│   ├── base.py
+│   ├── run_code.py
+│   ├── edit_file.py
+│   └── ... (auto-discovered payload tools)
+├── commands/            # CLI Command Handlers (CommandRegistry)
+│   ├── base.py
+│   ├── sessions.py
+│   └── ...
+├── services/            # Cross-cutting systems
+│   ├── logger.py        # Structured logging
+│   └── ...
+├── chat_session/        # Session persistence and management
 ├── ui/                  # Terminal interface and ANSI formatting
-├── chat_session/        # Session persistence
-├── functions/           # Tool implementations
-│   ├── get_files_info   # List workspace files
-│   ├── get_file_content # Read file contents
-│   ├── get_file_outline # File structure overview
-│   ├── write_file       # Create new files
-│   ├── edit_file        # Modify existing files
-│   ├── delete_file      # Remove files
-│   ├── run_code         # Execute code (auto-detects language)
-│   ├── run_command      # Run shell commands
-│   └── search_files     # Grep-like pattern search
-├── sessions/            # Session storage (gitignored)
-└── workspace/           # Sandboxed working directory
+└── workspace/           # Sandboxed execution directory
 ```
-
-## Configuration
-
-All settings live in `config.py`:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Ollama API endpoint |
-| `DEFAULT_MODEL` | `qwen3.5:cloud` | Primary model |
-| `FALLBACK_MODELS` | `[qwen3.5, qwen3-coder-next, nemotron-3-super]` | Model fallback chain |
-| `MAX_TOKENS` | `4096` | Max tokens per response |
-| `MAX_AGENT_STEPS` | `25` | Max tool steps per turn |
-| `MAX_AUTO_FIX` | `3` | Auto-fix retry attempts |
 
 ## Security
 
 CodeCrafter executes code on your local machine with these safeguards:
 
 - **Workspace Confinement** — File operations are restricted to the `/workspace` directory with path traversal protection
-- **Command Blocklist** — Destructive patterns (`rm -rf /`, `mkfs`, etc.) and access to sensitive paths are blocked
+- **Command Blocklist** — Destructive patterns (`rm -rf /`, `mkfs`, etc.) and access to sensitive paths are blocked *(Note: Command safety uses a blocklist pattern, review code before letting it execute shell commands)*
 
 > **Disclaimer**: Always review the code the agent writes before executing shell commands in production environments.
-
-## Contributing
-
-Contributions are welcome! Fork the repository, create a feature branch, and submit a pull request.
 
 ## License
 

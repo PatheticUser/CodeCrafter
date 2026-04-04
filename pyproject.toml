@@ -1,11 +1,14 @@
 [project]
 name = "codecrafter"
-version = "3.0.0"
+version = "3.1.0"
 description = "AI-powered coding assistant with multi-language execution"
 readme = "README.md"
 requires-python = ">=3.11"
+license = {text = "MIT"}
 dependencies = [
     "openai>=2.30.0",
-    "pygame>=2.6.1",
-    "python-docx>=1.1.0",
+    "rich>=14.3.3",
 ]
+
+[project.scripts]
+codecrafter = "main:main"

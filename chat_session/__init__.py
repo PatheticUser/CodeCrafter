@@ -1,7 +1,4 @@
-"""Chat session management for CodeCrafter.
-
-This module manages conversation sessions (stored in the 'sessions/' directory).
-"""
+"""Chat session management for CodeCrafter."""
 
 from .manager import (
     SessionManager,

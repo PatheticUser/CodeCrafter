@@ -1,4 +1,8 @@
-"""Session management for CodeCrafter."""
+"""Session management for CodeCrafter.
+
+Handles conversation persistence with proper error logging instead of
+silent exception swallowing.
+"""
 
 import json
 import glob
@@ -13,20 +17,20 @@ from config import (
     SESSION_PREFIX,
     SESSION_TIMESTAMP_FORMAT,
 )
-from ui.display import show_warning, c, Colors, Icons, dim
+from services.logger import logger
 
 
-def generate_session_name():
+def generate_session_name() -> str:
     """Generate a session name from current timestamp."""
     return datetime.now().strftime(f"{SESSION_PREFIX}{SESSION_TIMESTAMP_FORMAT}")
 
 
-def _session_path(name):
+def _session_path(name: str) -> str:
     """Get the full path for a session file."""
     return os.path.join(SESSIONS_DIR, f"{name}{SESSION_FILE_EXTENSION}")
 
 
-def get_latest_session_name():
+def get_latest_session_name() -> str | None:
     """Find the most recently modified session file name."""
     pattern = os.path.join(SESSIONS_DIR, f"{SESSION_PREFIX}*{SESSION_FILE_EXTENSION}")
     files = glob.glob(pattern)
@@ -36,7 +40,7 @@ def get_latest_session_name():
     return os.path.splitext(os.path.basename(latest))[0]
 
 
-def list_sessions():
+def list_sessions() -> list[dict]:
     """List all sessions with timestamps and message counts."""
     pattern = os.path.join(SESSIONS_DIR, f"{SESSION_PREFIX}*{SESSION_FILE_EXTENSION}")
     files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
@@ -54,12 +58,13 @@ def list_sessions():
     return sessions
 
 
-def load_session(session_name=None):
+def load_session(session_name: str | None = None) -> tuple[list, str]:
     """Load conversation history from a named session."""
     if session_name is None:
         session_name = get_latest_session_name()
     if session_name is None:
         return [], generate_session_name()
+
     path = _session_path(session_name)
     if os.path.exists(path):
         try:
@@ -67,116 +72,89 @@ def load_session(session_name=None):
                 data = json.load(f)
             if isinstance(data, list):
                 return data[-MAX_SESSION_MESSAGES:], session_name
-        except (json.JSONDecodeError, ValueError):
-            # Corrupted session — back it up and start fresh
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.warning("Session '%s' is corrupted: %s. Backing up.", session_name, e)
             backup = path + CORRUPT_EXTENSION
             try:
                 os.rename(path, backup)
-            except Exception:
-                pass
-            show_warning(
-                f"Session '{session_name}' was corrupted. Backed up and starting fresh."
-            )
+            except Exception as rename_err:
+                logger.error("Failed to backup corrupt session: %s", rename_err)
             return [], generate_session_name()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Failed to load session '%s': %s", session_name, e, exc_info=True)
     return [], session_name
 
 
-def save_session(messages, session_name):
+def save_session(messages: list, session_name: str) -> None:
     """Save conversation history to a named session file."""
     try:
         to_save = messages[-MAX_SESSION_MESSAGES:]
         path = _session_path(session_name)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(to_save, f, indent=2, ensure_ascii=False)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(
+            "Failed to save session '%s' (%d messages): %s",
+            session_name, len(messages), e, exc_info=True,
+        )
 
 
-def delete_session_file(session_name):
+def delete_session_file(session_name: str) -> bool:
     """Delete a session file. Returns True on success."""
     path = _session_path(session_name)
     if os.path.exists(path):
         try:
             os.remove(path)
             return True
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to delete session '%s': %s", session_name, e)
             return False
     return False
-
-
-def show_sessions():
-    """Display all sessions to the user."""
-    sessions = list_sessions()
-    if not sessions:
-        print(f"  {dim(Icons.INFO)}  No saved sessions found.")
-        return
-    print()
-    print(f"  {c(Icons.BRAIN, Colors.CYAN)}  {c('Saved Sessions', Colors.BOLD)}")
-    print(f"  {dim('─' * 52)}")
-    for i, s in enumerate(sessions):
-        marker = c(Icons.ARROW, Colors.CYAN) if i == 0 else " "
-        s_name = s["name"]
-        s_mod = s["modified"]
-        s_msgs = s["messages"]
-        info_line = str(s_mod) + "  |  " + str(s_msgs) + " msgs"
-        print(f"  {marker}  {c(s_name, Colors.CYAN)}  {dim(info_line)}")
-    print()
 
 
 class SessionManager:
     """Manages session state and operations."""
 
-    def __init__(self):
-        # Ensure sessions directory exists
+    def __init__(self) -> None:
         os.makedirs(SESSIONS_DIR, exist_ok=True)
-        self.messages = []
-        self.current_session_name = None
+        self.messages: list[dict] = []
+        self.current_session_name: str | None = None
         self._load_or_create()
 
-    def _load_or_create(self):
-        """Load existing session or create a new one."""
+    def _load_or_create(self) -> None:
         self.messages, self.current_session_name = load_session()
 
-    def new_session(self):
-        """Start a new session."""
+    def new_session(self) -> str:
         self.save()
         self.messages = []
         self.current_session_name = generate_session_name()
         return self.current_session_name
 
-    def load(self, session_name):
-        """Load a specific session."""
+    def load(self, session_name: str) -> tuple[str, int]:
         self.save()
         self.messages, self.current_session_name = load_session(session_name)
         return self.current_session_name, len(self.messages)
 
-    def delete(self, session_name):
-        """Delete a session file."""
-        return delete_session_file(session_name)
-
-    def save(self):
-        """Save current session."""
+    def save(self) -> None:
         if self.current_session_name:
             save_session(self.messages, self.current_session_name)
 
-    def clear(self):
-        """Clear current session messages."""
+    def clear(self) -> None:
         self.messages = []
         self.save()
 
-    def add_message(self, role, content, **kwargs):
-        """Add a message to the session."""
+    def add_message(self, role: str, content: str = "", **kwargs) -> None:
         msg = {"role": role, "content": content}
         msg.update(kwargs)
         self.messages.append(msg)
 
-    def get_messages(self):
-        """Get all messages."""
+    def get_messages(self) -> list[dict]:
         return self.messages
 
-    def trim_messages(self, keep_first=1, keep_last=6):
-        """Trim messages to fit context window."""
+    def trim_messages(self, keep_first: int = 1, keep_last: int = 6) -> None:
         if len(self.messages) > keep_first + keep_last:
             self.messages = self.messages[:keep_first] + self.messages[-keep_last:]
+            logger.info(
+                "Trimmed session to %d messages (kept first %d + last %d)",
+                len(self.messages), keep_first, keep_last,
+            )

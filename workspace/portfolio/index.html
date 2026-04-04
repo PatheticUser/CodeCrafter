@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muhammad Rameez - Portfolio</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f5;
+            --text-color: #333;
+            --section-bg: #ffffff;
+            --project-bg: #fafafa;
+            --card-shadow: rgba(0,0,0,0.08);
+            --nav-bg: rgba(255, 255, 255, 0.95);
+            --accent-color: #2d2d2d;
+            --heading-color: #1a1a1a;
+            --border-color: #e0e0e0;
+            --project-text: #555;
+            --project-heading: #1a1a1a;
+            --skill-bg: #2d2d2d;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0f0f0f;
+            --text-color: #b0b0b0;
+            --section-bg: #1a1a1a;
+            --project-bg: #141414;
+            --card-shadow: rgba(0,0,0,0.3);
+            --nav-bg: rgba(26, 26, 26, 0.95);
+            --accent-color: #ffffff;
+            --heading-color: #ffffff;
+            --border-color: #333;
+            --project-text: #999;
+            --project-heading: #ffffff;
+            --skill-bg: #ffffff;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: var(--bg-color);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            animation: fadeInDown 1s ease;
+        }
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--heading-color);
+            font-weight: 600;
+        }
+        header p {
+            font-size: 1.1rem;
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+        .profile-img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            margin-bottom: 20px;
+            background: var(--section-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--heading-color);
+            margin-left: auto;
+            margin-right: auto;
+            font-weight: 600;
+            transition: transform 0.3s ease;
+        }
+        .profile-img:hover {
+            transform: scale(1.05);
+        }
+        .section {
+            background: var(--section-bg);
+            border-radius: 0;
+            padding: 40px;
+            margin: 20px 0;
+            box-shadow: none;
+            border: 1px solid var(--border-color);
+            animation: fadeInUp 0.8s ease;
+            animation-fill-mode: both;
+        }
+
+        .section h2 {
+            color: var(--heading-color);
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        .skills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .skill-tag {
+            background: var(--skill-bg);
+            color: var(--bg-color);
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: 1px solid var(--border-color);
+        }
+        .skill-tag:hover {
+            opacity: 0.8;
+        }
+        .project {
+            background: var(--project-bg);
+            padding: 25px;
+            margin: 15px 0;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        .project:hover {
+            border-color: var(--accent-color);
+        }
+        .project h3 {
+            color: var(--project-heading);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .project ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        .project li {
+            margin: 8px 0;
+            color: var(--project-text);
+        }
+        .contact-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        footer {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-color);
+            opacity: 0.6;
+            font-size: 0.9rem;
+        }
+        .snake-demo {
+            background: var(--project-bg);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .snake-demo p {
+            color: var(--heading-color);
+            font-family: monospace;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            header p {
+                font-size: 1rem;
+            }
+            .profile-img {
+                width: 120px;
+                height: 120px;
+                font-size: 2.5rem;
+            }
+            .section {
+                padding: 20px;
+            }
+            .skill-tag {
+                padding: 8px 14px;
+                font-size: 0.85rem;
+            }
+        }
+        .nav-bar {
+            position: sticky;
+            top: 0;
+            background: var(--nav-bg);
+            padding: 15px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000;
+        }
+        .nav-bar ul {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 30px;
+            list-style: none;
+        }
+        .nav-bar a {
+            color: var(--text-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: opacity 0.2s ease;
+        }
+        .nav-bar a:hover {
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="profile-img">MR</div>
+            <h1>Muhammad Rameez</h1>
+            <p>@PatheticUser | ML Engineer | Deep Learning | NLP | LLMs</p>
+        </header>
+
+        <nav class="nav-bar">
+            <ul>
+                <li><a href="#about">About</a></li>
+                <li><a href="#experience">Experience</a></li>
+                <li><a href="#skills">Skills</a></li>
+                <li><a href="#education">Education</a></li>
+                <li><a href="#projects">Projects</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+
+        <div class="section" id="about">
+            <h2>About Me</h2>
+            <p>ML Engineer focused on deep learning, NLP, and LLMs; experienced in fine-tuning models, building AI agents, and delivering production-ready ML systems from data pipelines to evaluation and deployment. Passionate about leveraging cutting-edge machine learning techniques to solve real-world problems and create intelligent systems.</p>
+        </div>
+
+        <div class="section" id="experience">
+            <h2>Experience</h2>
+            <div class="project">
+                <h3>AI Engineer Intern</h3>
+                <p><strong>Arch Technologies</strong> | March 2025 – May 2025</p>
+                <ul>
+                    <li>Fine-tuned LLaMA-3.2B using LoRA/QLoRA on domain-specific datasets, improving reasoning quality and task performance</li>
+                    <li>Built and fine-tuned machine learning models for internal projects, achieving 15% improvement</li>
+                    <li>Developed a Brain Tumor Detection system using YOLOv11 and SAM2</li>
+                    <li>Developed cryptocurrency price forecasting models using ARIMA, SARIMA, and SARIMAX with hyperparameter optimization</li>
+                    <li>Tracked experiments using Weights & Biases, evaluated models using F1-score, RMSE, ROUGE-L, and deployed lightweight proof-of-concept models locally using Ollama</li>
+                    <li>Collaborated with engineering teams on AI integration</li>
+                </ul>
+            </div>
+            <div class="project">
+                <h3>Junior Software Engineer Intern</h3>
+                <p><strong>Maqminds</strong> | June 2025 – August 2025</p>
+                <ul>
+                    <li>Improved performance of the Nurture Analytics application by 23% through query optimization</li>
+                    <li>Fixed bugs, participated in code reviews, and debugged new feature implementations</li>
+                    <li>Developed software solutions and contributed to production codebases</li>
+                    <li>Collaborated with cross-functional teams on project delivery</li>
+                </ul>
+            </div>
+            <div class="project">
+                <h3>ML Engineer</h3>
+                <p><strong>Freelance / Independent</strong> | 2024 - Present</p>
+                <ul>
+                    <li>Design and implement end-to-end ML pipelines for production systems</li>
+                    <li>Fine-tune LLMs for domain-specific applications and optimize inference</li>
+                    <li>Build AI agents with advanced reasoning and tool-use capabilities</li>
+                    <li>Develop NLP solutions for text classification, generation, and analysis</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section" id="skills">
+            <h2>Technical Skills</h2>
+            <div class="skills">
+                <span class="skill-tag">Machine Learning</span>
+                <span class="skill-tag">Deep Learning</span>
+                <span class="skill-tag">NLP</span>
+                <span class="skill-tag">LLMs</span>
+                <span class="skill-tag">Model Fine-tuning (LoRA/QLoRA)</span>
+                <span class="skill-tag">PyTorch</span>
+                <span class="skill-tag">TensorFlow</span>
+                <span class="skill-tag">Transformers</span>
+                <span class="skill-tag">LangChain</span>
+                <span class="skill-tag">LangGraph</span>
+                <span class="skill-tag">AI Agents</span>
+                <span class="skill-tag">Computer Vision (YOLOv11, SAM2)</span>
+                <span class="skill-tag">Time Series Forecasting (ARIMA, SARIMA, SARIMAX)</span>
+                <span class="skill-tag">Evolutionary Algorithms (NEAT)</span>
+                <span class="skill-tag">FastAPI</span>
+                <span class="skill-tag">Ollama</span>
+                <span class="skill-tag">Weights & Biases</span>
+                <span class="skill-tag">SQLite</span>
+                <span class="skill-tag">Performance Tuning</span>
+                <span class="skill-tag">Query Optimization</span>
+            </div>
+        </div>
+
+        <div class="section" id="languages">
+            <h2>Languages</h2>
+            <div class="skills">
+                <span class="skill-tag">Python</span>
+                <span class="skill-tag">C++</span>
+                <span class="skill-tag">SQL</span>
+            </div>
+        </div>
+
+        <div class="section" id="frameworks">
+            <h2>Frameworks & Libraries</h2>
+            <div class="skills">
+                <span class="skill-tag">PyTorch</span>
+                <span class="skill-tag">TensorFlow</span>
+                <span class="skill-tag">Keras</span>
+                <span class="skill-tag">Scikit-Learn</span>
+                <span class="skill-tag">LangChain</span>
+                <span class="skill-tag">LangGraph</span>
+                <span class="skill-tag">Ollama</span>
+                <span class="skill-tag">Hugging Face</span>
+                <span class="skill-tag">LlamaIndex</span>
+                <span class="skill-tag">FastAPI</span>
+                <span class="skill-tag">Flask</span>
+                <span class="skill-tag">NumPy</span>
+                <span class="skill-tag">Pandas</span>
+                <span class="skill-tag">Matplotlib</span>
+            </div>
+        </div>
+
+        <div class="section" id="databases">
+            <h2>Databases</h2>
+            <div class="skills">
+                <span class="skill-tag">PostgreSQL</span>
+                <span class="skill-tag">SQLite</span>
+                <span class="skill-tag">MongoDB</span>
+                <span class="skill-tag">ChromaDB</span>
+                <span class="skill-tag">FAISS</span>
+            </div>
+        </div>
+
+        <div class="section" id="tools">
+            <h2>Tools & Platforms</h2>
+            <div class="skills">
+                <span class="skill-tag">Git</span>
+                <span class="skill-tag">Docker</span>
+                <span class="skill-tag">Vertex AI</span>
+                <span class="skill-tag">Google Colab</span>
+                <span class="skill-tag">Kaggle</span>
+                <span class="skill-tag">Jupyter</span>
+                <span class="skill-tag">VS Code</span>
+                <span class="skill-tag">Linux</span>
+                <span class="skill-tag">Roboflow</span>
+            </div>
+        </div>
+
+        <div class="section" id="courses">
+            <h2>Relevant Courses</h2>
+            <div class="skills">
+                <span class="skill-tag">Object-Oriented Programming</span>
+                <span class="skill-tag">Database Systems</span>
+                <span class="skill-tag">Operating Systems</span>
+                <span class="skill-tag">Machine Learning</span>
+                <span class="skill-tag">Deep Learning</span>
+                <span class="skill-tag">Computer Vision</span>
+                <span class="skill-tag">Generative AI</span>
+                <span class="skill-tag">Natural Language Processing</span>
+                <span class="skill-tag">IoT & Embedded Systems</span>
+            </div>
+        </div>
+
+        <div class="section" id="education">
+            <h2>Education</h2>
+            <div class="project">
+                <h3>BS Software Engineering (BSSE)</h3>
+                <p><strong>Punjab Tianjin University of Technology</strong> | 2023 - 2027</p>
+                <ul>
+                    <li>GPA: 3.36 / 4.00</li>
+                    <li>Relevant Coursework: Machine Learning, Deep Learning, NLP, Computer Vision, Data Structures, Algorithms, OOP, Database Systems</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section" id="projects">
+            <h2>Projects</h2>
+            <div class="project">
+                <h3>CodeCrafter – AI-Powered Local Development Agent</h3>
+                <p>Built an intelligent local coding assistant using Google's Gemini API for contextual reasoning, autonomously handling file creation, edits, and execution inside a secure workspace. Designed with modular structure and token-efficient context management to boost developer productivity.</p>
+            </div>
+            <div class="project">
+                <h3>Brain Tumor Detection System</h3>
+                <p>Developed a medical imaging solution using YOLOv11 and SAM2 for accurate brain tumor detection and segmentation. Implemented computer vision pipelines for healthcare applications.</p>
+            </div>
+            <div class="project">
+                <h3>LLaMA-3.2B Fine-tuning with LoRA/QLoRA</h3>
+                <p>Fine-tuned LLaMA-3.2B on domain-specific datasets using parameter-efficient fine-tuning techniques (LoRA/QLoRA), improving reasoning quality and task performance for specialized applications.</p>
+            </div>
+            <div class="project">
+                <h3>Cryptocurrency Price Forecasting</h3>
+                <p>Built time series forecasting models using ARIMA, SARIMA, and SARIMAX with hyperparameter optimization. Achieved accurate predictions with comprehensive evaluation using RMSE and other metrics.</p>
+            </div>
+            <div class="project">
+                <h3>LLM Deployment with Ollama</h3>
+                <p>Deployed lightweight proof-of-concept LLM models locally using Ollama, enabling efficient inference and testing of AI applications in production-like environments.</p>
+            </div>
+            <div class="project">
+                <h3>Flappy Bird AI — NEAT (NeuroEvolution of Augmenting Topologies)</h3>
+                <p>Developed an AI agent that autonomously plays Flappy Bird using the NEAT algorithm, evolving both network structure and weights via crossover, mutation, and selection. Demonstrates reinforcement learning through selection principles, optimizing performance over generations without manual training.</p>
+            </div>
+            <div class="project">
+                <h3>Synapse AI — Research Agent (LangChain + LangGraph)</h3>
+                <p>Built a production-ready Research Agent with Ollama-powered LLMs and Tavily web search, synthesizing information from Wikipedia, arXiv, and YouTube with a FastAPI backend, Human-in-the-Loop validation, LangGraph state management for complex multi-source research workflows, and persistent session memory via SQLite.</p>
+            </div>
+        </div>
+
+        <div class="section" id="contact">
+            <h2>Contact</h2>
+            <div class="contact-info">
+                <div class="contact-item">
+                    <span>rameezalipacific@gmail.com</span>
+                </div>
+                <div class="contact-item">
+                    <span>+92 300 6547090</span>
+                </div>
+                <div class="contact-item">
+                    <span>GitHub: @PatheticUser</span>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>&copy; 2026 Muhammad Rameez. All rights reserved.</p>
+        </footer>
+    </div>
+    <script>
+        // Smooth scroll for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add scroll animation to sections
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.section').forEach(section => {
+            section.style.opacity = '0';
+            section.style.transform = 'translateY(30px)';
+            section.style.transition = 'all 0.6s ease';
+            observer.observe(section);
+        });
+
+        // Add hover effect to skill tags
+        document.querySelectorAll('.skill-tag').forEach(tag => {
+            tag.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05)';
+            });
+            tag.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+
+        // Theme toggle functionality
+        const themeToggleBtn = document.createElement('button');
+        themeToggleBtn.innerHTML = 'Toggle Theme';
+        themeToggleBtn.style.position = 'fixed';
+        themeToggleBtn.style.top = '20px';
+        themeToggleBtn.style.right = '20px';
+        themeToggleBtn.style.zIndex = '1000';
+        themeToggleBtn.style.padding = '10px 16px';
+        themeToggleBtn.style.background = 'var(--skill-bg)';
+        themeToggleBtn.style.color = 'var(--bg-color)';
+        themeToggleBtn.style.border = '1px solid var(--border-color)';
+        themeToggleBtn.style.borderRadius = '4px';
+        themeToggleBtn.style.fontSize = '0.85rem';
+        themeToggleBtn.style.cursor = 'pointer';
+        themeToggleBtn.style.transition = 'opacity 0.2s ease';
+        themeToggleBtn.style.fontWeight = '500';
+        themeToggleBtn.addEventListener('mouseenter', () => {
+            themeToggleBtn.style.opacity = '0.7';
+        });
+        themeToggleBtn.addEventListener('mouseleave', () => {
+            themeToggleBtn.style.opacity = '1';
+        });
+        document.body.appendChild(themeToggleBtn);
+
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+
+        // Load saved theme preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+</body>
+</html>

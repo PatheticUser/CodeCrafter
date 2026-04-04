@@ -14,3 +14,7 @@ sessions/
 
 # Workspace metadata
 workspace/project_description.json
+
+# Logs
+*.log
+logs/
