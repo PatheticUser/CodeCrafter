@@ -1,0 +1,1 @@
+print("Codecrafter works!")

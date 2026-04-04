@@ -3,7 +3,7 @@
 CodeCrafter - AI-powered coding assistant with multi-language execution.
 
 A modular coding agent that provides:
-- Interactive AI chat with Groq API
+- Interactive AI chat powered by Ollama
 - File operations (read, write, edit, delete)
 - Code execution in 15+ languages
 - Session management with persistent history
@@ -47,17 +47,11 @@ from config import (
     CONTEXT_KEEP_MESSAGES,
     EXECUTION_ERROR_INDICATORS,
     TIMEOUT_INDICATOR,
-    RATE_LIMIT_ERROR,
-    RATE_LIMIT_KEYWORD,
-    BAD_REQUEST_ERROR,
-    INVALID_KEYWORD,
-    SERVICE_UNAVAILABLE_ERROR,
-    UNAVAILABLE_KEYWORD,
-    MODEL_DECOMMISSIONED_INDICATORS,
+    FALLBACK_TRIGGERS,
 )
 
 # Core modules
-from core import APIKeyManager, load_api_keys, scan_workspace_tree
+from core import OllamaClient, scan_workspace_tree
 
 # UI modules
 from ui import (
@@ -151,6 +145,12 @@ def has_execution_error(result_str):
     return False
 
 
+def should_fallback(error_str):
+    """Check if an API error should trigger model fallback."""
+    error_lower = error_str.lower()
+    return any(trigger in error_lower for trigger in FALLBACK_TRIGGERS)
+
+
 # =============================================================================
 # Tool Registry
 # =============================================================================
@@ -209,10 +209,8 @@ def parse_args():
     for i, arg in enumerate(args):
         if arg == "--model" and i + 1 < len(args):
             model_key = args[i + 1]
-            if model_key in MODELS:
-                selected_model = model_key
-            else:
-                selected_model = model_key  # Allow any model name directly
+            # Resolve shortcut or use as-is
+            selected_model = MODELS.get(model_key, model_key)
 
     return verbose, selected_model
 
@@ -226,12 +224,10 @@ def main():
     """Main entry point for CodeCrafter."""
     # Parse CLI flags
     verbose_mode, selected_model = parse_args()
-    main_model = MODELS.get(selected_model, selected_model)
 
-    # Initialize API client
-    api_keys = load_api_keys()
-    key_manager = APIKeyManager(api_keys)
-    client = key_manager.get_client()
+    # Initialize Ollama client with model fallback chain
+    ollama = OllamaClient(primary_model=selected_model)
+    client = ollama.get_client()
 
     # Initialize session manager
     session_mgr = SessionManager()
@@ -240,12 +236,13 @@ def main():
     user_name = get_user_name()
 
     # Show intro
-    show_intro_banner(user_name, session_mgr.current_session_name, main_model)
+    show_intro_banner(user_name, session_mgr.current_session_name, ollama.active_model)
 
     if verbose_mode:
         tree_char = "└─"
+        fallback_info = f" + {ollama.model_count() - 1} fallback(s)" if ollama.model_count() > 1 else ""
         print(
-            f"  {dim('  ' + tree_char)}  API Keys: {c(str(key_manager.key_count()), Colors.CYAN)} loaded"
+            f"  {dim('  ' + tree_char)}  Backend: {c('Ollama', Colors.CYAN)} (cloud){dim(fallback_info)}"
         )
 
     # Show verbose config
@@ -372,6 +369,11 @@ def main():
         # Agentic Loop
         system_prompt = build_system_prompt()
         auto_fix_count = 0
+        active_model = ollama.active_model
+
+        # Reset to primary model at the start of each turn
+        ollama.reset()
+        active_model = ollama.active_model
 
         for step in range(MAX_AGENT_STEPS):
             if verbose_mode:
@@ -381,53 +383,39 @@ def main():
 
             try:
                 response = client.chat.completions.create(
-                    model=main_model,
+                    model=active_model,
                     messages=[{"role": "system", "content": system_prompt}] + session_mgr.get_messages(),
                     tools=available_tools,
                     tool_choice="auto",
                     max_tokens=MAX_TOKENS,
                 )
+
             except Exception as e:
                 spinner.stop()
                 error_str = str(e)
 
-                # Handle rate limit errors
-                if RATE_LIMIT_ERROR in error_str or RATE_LIMIT_KEYWORD in error_str.lower():
-                    if key_manager.rotate():
-                        client = key_manager.get_client()
-                        continue
-                    else:
-                        show_error("Rate limit reached. Wait a moment and try again.")
-
-                # Handle bad request errors
-                elif BAD_REQUEST_ERROR in error_str or INVALID_KEYWORD in error_str.lower():
-                    # Check for model decommission
-                    if any(ind in error_str.lower() for ind in MODEL_DECOMMISSIONED_INDICATORS):
-                        show_error(
-                            f"Model '{main_model}' is unavailable or decommissioned. Try a different model with --model flag."
+                # Try model fallback on recoverable errors
+                if should_fallback(error_str):
+                    new_model = ollama.fallback()
+                    if new_model:
+                        print(
+                            f"  {c(Icons.INFO, Colors.DIM)}  "
+                            f"{c(active_model, Colors.DIM)} failed, switching to "
+                            f"{c(new_model, Colors.CYAN)}"
                         )
-                        session_mgr.messages.pop()
-                        break
-                    # Try key rotation
-                    if key_manager.rotate():
-                        client = key_manager.get_client()
+                        active_model = new_model
                         continue
-                    # Context too large
-                    if len(session_mgr.messages) > CONTEXT_TRIM_THRESHOLD:
-                        session_mgr.trim_messages()
-                        continue
-                    else:
-                        show_error(
-                            "Request too large even after trimming. Type 'exit' to start fresh."
-                        )
 
-                # Handle service unavailable
-                elif SERVICE_UNAVAILABLE_ERROR in error_str or UNAVAILABLE_KEYWORD in error_str.lower():
-                    show_error("Service temporarily unavailable. Try again in a moment.")
+                # Context too large — trim and retry
+                if "400" in error_str and len(session_mgr.messages) > CONTEXT_TRIM_THRESHOLD:
+                    session_mgr.trim_messages()
+                    continue
 
-                # Unknown error
+                # Connection error (Ollama not running)
+                if "connection" in error_str.lower() or "refused" in error_str.lower():
+                    show_error("Cannot connect to Ollama. Make sure it is running: ollama serve")
                 else:
-                    show_error(f"Model error: {e}")
+                    show_error(f"All models failed: {e}")
 
                 session_mgr.messages.pop()
                 break
@@ -437,7 +425,7 @@ def main():
             choice = response.choices[0]
             assistant_message = choice.message
 
-            # Strip thinking blocks from Qwen-QwQ reasoning
+            # Strip thinking blocks from reasoning models
             assistant_content = assistant_message.content or ""
             if "<think>" in assistant_content:
                 assistant_content = re.sub(

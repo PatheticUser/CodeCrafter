@@ -3,25 +3,24 @@
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-CodeCrafter is a powerful, local command-line AI coding agent that reads, writes, executes, and debugs code in a sandboxed workspace. Built around the Groq API (powered by state-of-the-art models), it is designed for rapid prototyping, robust development assistance, and learning.
+CodeCrafter is a local AI coding agent that runs in your terminal. It reads, writes, executes, and debugs code in a sandboxed workspace — powered by [Ollama](https://ollama.com) cloud models for fast, private inference with automatic model fallback.
 
 ## Key Features
 
-- **Multi-Language Execution**: Run Python, compile/execute C++, execute JavaScript (Node/Bun), and preview HTML/CSS directly from the CLI.
-- **Intelligent Workspace Management**: Creates dedicated folders for projects and isolates single scripts seamlessly. Maintains context with auto-generated metadata.
-- **Persistent Session Management**: Complete history of conversations kept outside the workspace. Pick up right where you left off.
-- **Hardened Security Sandbox**: 
-  - Path traversal protections ensure file operations stay exclusively within the sandbox.
-  - Strict command blocklists prevent dangerous shell executions.
-- **API Key Management**: Supports automatic rotation for Groq API keys to elegantly handle rate limits dynamically.
+- **Multi-Language Execution** — Run Python, C++, JavaScript, HTML/CSS, and more directly from the CLI
+- **Automatic Model Fallback** — If a model hits rate limits or errors out, seamlessly switches to the next one in the chain
+- **Intelligent Workspace** — Auto-creates project folders, isolates scripts, maintains workspace context
+- **Persistent Sessions** — Full conversation history preserved across restarts
+- **Self-Correcting** — Automatically detects errors, installs missing dependencies, and retries
+- **Sandboxed Security** — Path traversal protection and dangerous command blocklist keep operations safe
 
 ## Installation
 
 ### Prerequisites
 
 - Python 3.11+
-- [`uv`](https://docs.astral.sh/uv/) (Recommended) or `pip`
-- [Groq API Key](https://console.groq.com)
+- [`uv`](https://docs.astral.sh/uv/) (recommended) or `pip`
+- [Ollama](https://ollama.com) installed and running
 
 ### Setup
 
@@ -32,68 +31,119 @@ CodeCrafter is a powerful, local command-line AI coding agent that reads, writes
    ```
 
 2. **Install dependencies:**
-    Using `uv`:
    ```bash
    uv sync
    ```
-   Or using `pip`:
+
+3. **Start Ollama:**
    ```bash
-   pip install groq
+   ollama serve
    ```
 
-3. **Configure API Keys:**
-   Create an `api_keys.json` file in the project root containing your Groq API keys as a JSON array:
-   ```json
-   [
-       "gsk_your_first_api_key_here",
-       "gsk_your_second_api_key_here"
-   ]
-   ```
+   Cloud models are fetched automatically on first use — no need to pull manually.
 
 ## Usage
 
-Start the agent with `uv`:
 ```bash
 uv run main.py
 ```
 
-For verbose debugging and real-time tool inspection:
+For verbose mode with step-by-step tool inspection:
 ```bash
 uv run main.py --verbose
 ```
 
-**Commands inside the agent:**
-- `help` - Show all available commands
-- `sessions` / `session new` / `session load <name>` / `session delete <name>` - Manage chat sessions
-- `clear` - Clear the current session history
-- `exit` / `quit` - Save and exit
+Use a specific model:
+```bash
+uv run main.py --model qwen3-coder
+```
 
-## Project Architecture
+### In-Agent Commands
 
-CodeCrafter maintains a clean separation of concerns:
+| Command | Description |
+|---------|-------------|
+| `help` | Show available commands |
+| `sessions` | List saved sessions |
+| `session new` | Start a new session |
+| `session load <name>` | Load a saved session |
+| `session delete <name>` | Delete a session |
+| `clear` | Clear current session history |
+| `exit` / `quit` | Save and exit |
+
+## Model Fallback
+
+CodeCrafter uses a chain of Ollama cloud models. If the primary model fails (rate limit, unavailable, overloaded), it automatically switches to the next one:
+
+| Priority | Model | Strengths |
+|----------|-------|-----------|
+| 1 (Primary) | `qwen3.5:cloud` | All-rounder — tools, vision, thinking |
+| 2 | `qwen3-coder-next:cloud` | Coding-focused, agentic workflows |
+| 3 | `nemotron-3-super:cloud` | NVIDIA 120B MoE, strong reasoning |
+
+You can override the primary model with `--model`:
+
+```bash
+# Use a shortcut
+uv run main.py --model nemotron-super
+
+# Or any Ollama model directly
+uv run main.py --model llama3:latest
+```
+
+**Model shortcuts:** `qwen3.5`, `qwen3-coder`, `nemotron-super`
+
+To customize the fallback chain, edit `FALLBACK_MODELS` in `config.py`.
+
+## Architecture
 
 ```
 CodeCrafter/
-├── main.py                     # Core agent loop and CLI
-├── config.py                   # Global configuration and security limits
-├── core/                       # API key rotation, workspace scanning
-├── ui/                         # Terminal interface and ANSI formatting
-├── functions/                  # Tool implementations (read, write, exec)
-├── sessions/                   # Session storage (gitignored)
-└── workspace/                  # Sandboxed working directory
+├── main.py              # Core agent loop and CLI
+├── config.py            # Configuration (models, limits, UI)
+├── core/
+│   ├── api_manager.py   # Ollama client + model fallback
+│   └── workspace.py     # Workspace tree scanning
+├── ui/                  # Terminal interface and ANSI formatting
+├── chat_session/        # Session persistence
+├── functions/           # Tool implementations
+│   ├── get_files_info   # List workspace files
+│   ├── get_file_content # Read file contents
+│   ├── get_file_outline # File structure overview
+│   ├── write_file       # Create new files
+│   ├── edit_file        # Modify existing files
+│   ├── delete_file      # Remove files
+│   ├── run_code         # Execute code (auto-detects language)
+│   ├── run_command      # Run shell commands
+│   └── search_files     # Grep-like pattern search
+├── sessions/            # Session storage (gitignored)
+└── workspace/           # Sandboxed working directory
 ```
+
+## Configuration
+
+All settings live in `config.py`:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Ollama API endpoint |
+| `DEFAULT_MODEL` | `qwen3.5:cloud` | Primary model |
+| `FALLBACK_MODELS` | `[qwen3.5, qwen3-coder-next, nemotron-3-super]` | Model fallback chain |
+| `MAX_TOKENS` | `4096` | Max tokens per response |
+| `MAX_AGENT_STEPS` | `25` | Max tool steps per turn |
+| `MAX_AUTO_FIX` | `3` | Auto-fix retry attempts |
 
 ## Security
 
-CodeCrafter executes code and shell commands on your local machine. It incorporates several safeguards:
-- **Workspace Confinement**: Operations like file writes, reads, and deletes are statically verified against path-traversal within the `/workspace` directory.
-- **Dangerous Command Blocklist**: Destructive execution patterns (e.g., `rm -rf /`, `mkfs`) and access to sensitive locations (`/etc/shadow`) are heavily restricted natively.
+CodeCrafter executes code on your local machine with these safeguards:
 
-> **Disclaimer**: This tool is built for development purposes. Always review the code the agent intends to run, especially before executing shell commands.
+- **Workspace Confinement** — File operations are restricted to the `/workspace` directory with path traversal protection
+- **Command Blocklist** — Destructive patterns (`rm -rf /`, `mkfs`, etc.) and access to sensitive paths are blocked
+
+> **Disclaimer**: Always review the code the agent writes before executing shell commands in production environments.
 
 ## Contributing
 
-Contributions are welcome! Please fork the repository, create a feature branch, and submit a pull request. Make sure tests are well documented.
+Contributions are welcome! Fork the repository, create a feature branch, and submit a pull request.
 
 ## License
 

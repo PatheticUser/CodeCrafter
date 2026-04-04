@@ -1,63 +1,80 @@
-"""API Key management for Groq API with rotation support."""
+"""API client and model fallback management for Ollama Cloud."""
 
-import json
-import os
 import sys
 
-from groq import Groq
+from openai import OpenAI
 
-from config import API_KEYS_FILE, BASE_DIR
-from ui.display import c, Colors, Icons, show_error
-
-
-def load_api_keys():
-    """Load API keys from api_keys.json."""
-    keys = []
-    keys_file = os.path.join(BASE_DIR, API_KEYS_FILE)
-    if os.path.exists(keys_file):
-        try:
-            with open(keys_file, "r", encoding="utf-8") as f:
-                loaded = json.load(f)
-            if isinstance(loaded, list):
-                keys = [
-                    k.strip()
-                    for k in loaded
-                    if k.strip() and not k.startswith("gsk_your_")
-                ]
-        except Exception:
-            pass
-    return keys
+from config import OLLAMA_BASE_URL, FALLBACK_MODELS
+from ui.display import c, Colors, Icons
 
 
-class APIKeyManager:
-    """Manages multiple API keys with silent automatic rotation on rate limits."""
+class OllamaClient:
+    """Manages the Ollama API client with automatic model fallback.
 
-    def __init__(self, keys):
-        self.keys = keys
-        self.current_index = 0
+    When the active model fails (rate limit, unavailable, etc.), calling
+    `fallback()` switches to the next model in the FALLBACK_MODELS chain.
+    """
+
+    def __init__(self, primary_model=None):
+        """Initialize with a primary model. Falls back through FALLBACK_MODELS on errors.
+
+        Args:
+            primary_model: The model to start with. If it's in FALLBACK_MODELS,
+                          the chain starts from that position. Otherwise it's
+                          tried first, then the chain is used.
+        """
         self.client = None
+
+        # Build the model chain with the primary model first
+        if primary_model and primary_model in FALLBACK_MODELS:
+            # Start from primary's position in the chain
+            idx = FALLBACK_MODELS.index(primary_model)
+            self.models = FALLBACK_MODELS[idx:] + FALLBACK_MODELS[:idx]
+        elif primary_model:
+            # Primary not in chain — try it first, then the chain
+            self.models = [primary_model] + list(FALLBACK_MODELS)
+        else:
+            self.models = list(FALLBACK_MODELS)
+
+        self.current_index = 0
         self._init_client()
 
     def _init_client(self):
-        if not self.keys:
-            print(f"  {c(Icons.ERROR, Colors.RED)}  No API keys found.")
-            print(f"  {c(Icons.INFO, Colors.DIM)}  Add keys to {c('api_keys.json', Colors.CYAN)}")
+        """Initialize the OpenAI client pointing to Ollama."""
+        try:
+            self.client = OpenAI(
+                base_url=OLLAMA_BASE_URL,
+                api_key="ollama",
+            )
+        except Exception as e:
+            print(f"  {c(Icons.ERROR, Colors.RED)}  Failed to connect to Ollama: {e}")
+            print(f"  {c(Icons.INFO, Colors.DIM)}  Make sure Ollama is running: {c('ollama serve', Colors.CYAN)}")
             sys.exit(1)
-        self.client = Groq(api_key=self.keys[self.current_index])
 
-    def rotate(self):
-        """Silently switch to the next API key. Returns True if rotated, False if all exhausted."""
-        if len(self.keys) <= 1:
-            return False
-        old_index = self.current_index
-        self.current_index = (self.current_index + 1) % len(self.keys)
-        if self.current_index == old_index:
-            return False
-        self.client = Groq(api_key=self.keys[self.current_index])
-        return True
+    @property
+    def active_model(self):
+        """Return the currently active model name."""
+        return self.models[self.current_index]
+
+    def fallback(self):
+        """Switch to the next model in the fallback chain.
+
+        Returns:
+            The new model name if switched, or None if all models exhausted.
+        """
+        if self.current_index + 1 < len(self.models):
+            self.current_index += 1
+            return self.models[self.current_index]
+        return None
+
+    def reset(self):
+        """Reset back to the primary model (for the next user turn)."""
+        self.current_index = 0
+
+    def model_count(self):
+        """Return total number of models in the fallback chain."""
+        return len(self.models)
 
     def get_client(self):
+        """Return the OpenAI-compatible client."""
         return self.client
-
-    def key_count(self):
-        return len(self.keys)

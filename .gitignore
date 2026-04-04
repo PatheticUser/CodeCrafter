@@ -8,6 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
-api_keys.json
+
+# Session data
 sessions/
+
+# Workspace metadata
 workspace/project_description.json

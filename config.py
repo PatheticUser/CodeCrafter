@@ -45,26 +45,33 @@ SESSION_PREFIX = "session_"
 SESSION_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
 
 # =============================================================================
-# Model Configuration
+# Model Configuration (Ollama Cloud)
 # =============================================================================
 
-# Available Models
-MODELS = {
-    "qwen3-32b": "qwen/qwen3-32b",
-    "llama-3.3-70b": "llama-3.3-70b-versatile",
-    "llama-4-scout": "meta-llama/llama-4-scout-17b-16e-instruct",
-    "llama-3.1-8b": "llama-3.1-8b-instant",
-}
+# Ollama API endpoint
+OLLAMA_BASE_URL = "http://localhost:11434/v1"
 
 # Default model
-DEFAULT_MODEL = "qwen3-32b"
+DEFAULT_MODEL = "qwen3.5:cloud"
 
-# API Configuration
-API_KEYS_FILE = "api_keys.json"
-MAX_API_RETRIES = 3
+# Available models for --model flag shortcuts
+MODELS = {
+    "qwen3.5": "qwen3.5:cloud",
+    "qwen3-coder": "qwen3-coder-next:cloud",
+    "nemotron-super": "nemotron-3-super:cloud",
+}
+
+# Fallback model chain — ordered by preference.
+# When the active model fails, CodeCrafter tries the next one automatically.
+# All models must support tool/function calling.
+FALLBACK_MODELS = [
+    "qwen3.5:cloud",              # Primary: strong all-rounder with tool + vision + thinking
+    "qwen3-coder-next:cloud",     # Coding-focused, agentic workflows
+    "nemotron-3-super:cloud",     # NVIDIA 120B MoE, strong reasoning
+]
 
 # Token limits
-MAX_TOKENS = 16384
+MAX_TOKENS = 4096
 
 # =============================================================================
 # Agent Loop Configuration
@@ -91,49 +98,49 @@ SPINNER_FRAME_DURATION = 0.12  # seconds between frames
 SPINNER_WORD_SWITCH_INTERVAL = 6.0  # seconds before switching words
 
 SPINNER_WORDS = [
-    "thinking",
-    "analyzing",
-    "building",
-    "crafting",
-    "processing",
-    "resolving",
-    "computing",
-    "generating",
-    "compiling",
-    "synthesizing",
-    "optimizing",
-    "evaluating",
-    "reasoning",
-    "assembling",
-    "mapping",
-    "parsing",
-    "loading",
-    "scanning",
-    "indexing",
-    "decoding",
-    "linking",
-    "patching",
-    "tracing",
-    "wiring",
-    "forging",
-    "hashing",
-    "querying",
-    "rendering",
-    "buffering",
-    "streaming",
-    "iterating",
-    "traversing",
-    "encoding",
-    "deploying",
-    "profiling",
-    "debugging",
-    "refactoring",
-    "architecting",
-    "bootstrapping",
-    "calibrating",
+    "thinking ",
+    "analyzing ",
+    "building ",
+    "crafting ",
+    "processing ",
+    "resolving ",
+    "computing ",
+    "generating ",
+    "compiling ",
+    "synthesizing ",
+    "optimizing ",
+    "evaluating ",
+    "reasoning ",
+    "assembling ",
+    "mapping ",
+    "parsing ",
+    "loading ",
+    "scanning ",
+    "indexing ",
+    "decoding ",
+    "linking ",
+    "patching ",
+    "tracing ",
+    "wiring ",
+    "forging ",
+    "hashing ",
+    "querying ",
+    "rendering ",
+    "buffering ",
+    "streaming ",
+    "iterating ",
+    "traversing ",
+    "encoding ",
+    "deploying ",
+    "profiling ",
+    "debugging ",
+    "refactoring ",
+    "architecting ",
+    "bootstrapping ",
+    "calibrating ",
 ]
 
-SPINNER_FRAMES = ["󰪞", "󰪟", "󰪠", "󰪡", "󰪢", "󰪣", "󰪤", "󰪥"]
+SPINNER_FRAMES = ["󰚔", "󰚕", "󰚖", "󰚗", "󰚘", "󰚙"]
 
 # =============================================================================
 # Display Configuration
@@ -153,15 +160,11 @@ BANNER_WIDTH = 52
 # File-mutating tools that trigger workspace refresh
 FILE_MUTATING_TOOLS = {"write_file", "edit_file", "delete_file", "run_command"}
 
-# Project description file settings (legacy, kept for compatibility)
-PROJECT_DESCRIPTION_FILE = "project_description.json"
-AUTO_UPDATE_DESCRIPTION = True  # Set to False to disable auto-updates
-
 # =============================================================================
 # Error Detection Patterns
 # =============================================================================
 
-# Python error indicators that trigger auto-fix
+# Execution error indicators that trigger auto-fix
 EXECUTION_ERROR_INDICATORS = [
     "Traceback (most recent",
     "SyntaxError",
@@ -183,24 +186,8 @@ EXECUTION_ERROR_INDICATORS = [
 # Timeout indicator (not auto-fixable)
 TIMEOUT_INDICATOR = "timed out"
 
-# =============================================================================
-# API Error Codes
-# =============================================================================
-
-# Rate limit error
-RATE_LIMIT_ERROR = "429"
-RATE_LIMIT_KEYWORD = "rate_limit"
-
-# Invalid request / bad request
-BAD_REQUEST_ERROR = "400"
-INVALID_KEYWORD = "invalid"
-
-# Service unavailable
-SERVICE_UNAVAILABLE_ERROR = "503"
-UNAVAILABLE_KEYWORD = "unavailable"
-
-# Model decommissioned indicators
-MODEL_DECOMMISSIONED_INDICATORS = ["decommissioned", "not found"]
+# Error patterns that trigger model fallback
+FALLBACK_TRIGGERS = ["429", "rate_limit", "503", "unavailable", "overloaded", "not found"]
 
 # =============================================================================
 # Default Values
