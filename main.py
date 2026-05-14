@@ -3,21 +3,22 @@
 CodeCrafter - AI-powered coding assistant with multi-language execution.
 
 A modular coding agent that provides:
-- Interactive AI chat powered by Ollama
+- Interactive AI chat powered by Ollama (with optional API server)
 - File operations (read, write, edit, delete)
 - Code execution in 15+ languages
 - Session management with persistent history
 - Workspace-aware context
 
 Usage:
-    python main.py [--verbose] [--model MODEL_NAME]
+    python main.py [--verbose] [--model MODEL_NAME] [--path WORKING_DIR] [--api-key API_KEY]
 """
 
 # Fix Windows Unicode encoding issues
 import sys
-import os
+
 if sys.platform == "win32":
     import ctypes
+
     # Enable ANSI escape codes and UTF-8 mode
     kernel32 = ctypes.windll.kernel32
     kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
@@ -29,77 +30,73 @@ if sys.platform == "win32":
     sys.stderr.reconfigure(encoding="utf-8")
 
 import json
+import os
 import re
+
+# Session modules
+from chat_session import SessionManager, delete_session_file, list_sessions
 
 # Configuration
 from config import (
-    VERSION,
-    MODELS,
+    CONTEXT_TRIM_THRESHOLD,
     DEFAULT_MODEL,
-    WORKING_DIR,
-    SESSIONS_DIR,
-    MAX_SESSION_MESSAGES,
+    EXECUTION_ERROR_INDICATORS,
+    FALLBACK_TRIGGERS,
+    FILE_MUTATING_TOOLS,
     MAX_AGENT_STEPS,
     MAX_AUTO_FIX,
     MAX_TOKENS,
-    FILE_MUTATING_TOOLS,
-    CONTEXT_TRIM_THRESHOLD,
-    CONTEXT_KEEP_MESSAGES,
-    EXECUTION_ERROR_INDICATORS,
+    MODELS,
     TIMEOUT_INDICATOR,
-    FALLBACK_TRIGGERS,
 )
 
 # Core modules
-from core import OllamaClient, scan_workspace_tree
-
-# UI modules
-from ui import (
-    c, Colors, Icons, dim,
-    clear_screen,
-    show_intro_banner,
-    show_exit_banner,
-    show_verbose_config,
-    show_help,
-    show_error,
-    show_warning,
-    show_action,
-    show_agent_response,
-    show_auto_fix,
-    show_verbose_step,
-    show_verbose_function,
-    show_verbose_result,
-    show_verbose_tokens,
-    show_function_call,
-    get_user_name,
-    Spinner,
-    spinner,
-    reset_action_tracker,
-)
-
-# Session modules
-from chat_session import SessionManager, list_sessions, delete_session_file
+from core import InferenceClient, scan_workspace_tree
+from functions.delete_file import delete_file, schema_delete_file
+from functions.edit_file import edit_file, schema_edit_file
+from functions.get_file_content import get_file_content, schema_get_file_content
+from functions.get_file_outline import get_file_outline, schema_get_file_outline
 
 # Tool functions
 from functions.get_files_info import get_files_info, schema_get_files_info
-from functions.get_file_content import get_file_content, schema_get_file_content
-from functions.get_file_outline import get_file_outline, schema_get_file_outline
-from functions.write_file import write_file, schema_write_file
-from functions.edit_file import edit_file, schema_edit_file
-from functions.delete_file import delete_file, schema_delete_file
 from functions.run_code import run_code, schema_run_code
 from functions.run_command import run_command, schema_run_command
-from functions.search_files import search_files, schema_search_files
+from functions.search_files import schema_search_files, search_files
+from functions.write_file import schema_write_file, write_file
 
+# UI modules
+from ui import (
+    Colors,
+    Icons,
+    c,
+    dim,
+    get_user_name,
+    reset_action_tracker,
+    show_action,
+    show_agent_response,
+    show_auto_fix,
+    show_error,
+    show_exit_banner,
+    show_function_call,
+    show_help,
+    show_intro_banner,
+    show_verbose_config,
+    show_verbose_function,
+    show_verbose_result,
+    show_verbose_step,
+    show_verbose_tokens,
+    show_warning,
+    spinner,
+)
 
 # =============================================================================
 # System Prompt Builder
 # =============================================================================
 
 
-def build_system_prompt():
+def build_system_prompt(working_dir: str):
     """Build the system prompt with current workspace state."""
-    tree = scan_workspace_tree(WORKING_DIR)
+    tree = scan_workspace_tree(working_dir)
     return f"""You are CodeCrafter, an AI coding assistant running in a local terminal environment.
 
 CRITICAL: You are running inside a terminal. All your text responses must be PLAIN TEXT.
@@ -206,13 +203,26 @@ def parse_args():
 
     # Parse --model flag
     selected_model = DEFAULT_MODEL
-    for i, arg in enumerate(args):
+    working_dir = None
+    api_key = None
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
         if arg == "--model" and i + 1 < len(args):
             model_key = args[i + 1]
-            # Resolve shortcut or use as-is
             selected_model = MODELS.get(model_key, model_key)
+            i += 2
+        elif arg == "--path" and i + 1 < len(args):
+            working_dir = os.path.abspath(args[i + 1])
+            i += 2
+        elif arg == "--api-key" and i + 1 < len(args):
+            api_key = args[i + 1]
+            i += 2
+        else:
+            i += 1
 
-    return verbose, selected_model
+    return verbose, selected_model, working_dir, api_key
 
 
 # =============================================================================
@@ -222,12 +232,34 @@ def parse_args():
 
 def main():
     """Main entry point for CodeCrafter."""
-    # Parse CLI flags
-    verbose_mode, selected_model = parse_args()
+    import config as cfg
 
-    # Initialize Ollama client with model fallback chain
-    ollama = OllamaClient(primary_model=selected_model)
-    client = ollama.get_client()
+    # Parse CLI flags
+    verbose_mode, selected_model, working_dir, api_key = parse_args()
+
+    # Override WORKING_DIR if --path was given
+    if working_dir:
+        cfg.WORKING_DIR = working_dir
+
+    WDIR = cfg.WORKING_DIR
+
+    # Initialize inference client (API-first, falls back to direct Ollama)
+    client = InferenceClient(primary_model=selected_model, api_key=api_key)
+
+    # Show API status in verbose mode
+    if verbose_mode:
+        using_api = client.is_api_available()
+        if using_api:
+            print(
+                f"  {dim(Icons.ARROW)}  {dim('Backend:')} {c('CodeCrafter API', Colors.GREEN)} ({client.api_url})"
+            )
+        else:
+            fallback_info = (
+                f" + {client.model_count() - 1} fallback(s)" if client.model_count() > 1 else ""
+            )
+            print(
+                f"  {dim(Icons.ARROW)}  {dim('Backend:')} {c('Ollama', Colors.CYAN)} (direct){dim(fallback_info)}"
+            )
 
     # Initialize session manager
     session_mgr = SessionManager()
@@ -236,21 +268,11 @@ def main():
     user_name = get_user_name()
 
     # Show intro
-    show_intro_banner(user_name, session_mgr.current_session_name, ollama.active_model)
-
-    if verbose_mode:
-        tree_char = "└─"
-        fallback_info = f" + {ollama.model_count() - 1} fallback(s)" if ollama.model_count() > 1 else ""
-        print(
-            f"  {dim('  ' + tree_char)}  Backend: {c('Ollama', Colors.CYAN)} (cloud){dim(fallback_info)}"
-        )
+    show_intro_banner(user_name, session_mgr.current_session_name, client.active_model)
 
     # Show verbose config
     if verbose_mode:
-        show_verbose_config(WORKING_DIR, True)
-
-    # Scan workspace
-    workspace_tree = scan_workspace_tree(WORKING_DIR)
+        show_verbose_config(WDIR, True)
 
     # Show restored message
     if session_mgr.messages and verbose_mode:
@@ -264,10 +286,10 @@ def main():
     # =============================================================================
 
     while True:
-        prompt_arrow = "›"
+        prompt_arrow = "\u25b8"
         try:
             user_prompt = input(
-                f"\n  {c(Icons.PROMPT, Colors.MAGENTA)} {c(user_name, Colors.BOLD)} {c(prompt_arrow, Colors.CYAN)} "
+                f"\n  {c(user_name, Colors.MAGENTA)} {c(prompt_arrow, Colors.CYAN)} "
             )
         except EOFError:
             print()
@@ -304,11 +326,12 @@ def main():
         if cmd_lower == "sessions":
             sessions = list_sessions()
             if not sessions:
-                print(f"  {dim(Icons.INFO)}  No saved sessions found.")
+                print(f"  {dim(Icons.BULLET)}  No saved sessions")
                 continue
             print()
             print(f"  {c(Icons.BRAIN, Colors.CYAN)}  {c('Saved Sessions', Colors.BOLD)}")
-            print(f"  {dim('─' * 52)}")
+            separator = "\u2500" * 52
+            print(f"  {dim(separator)}")
             for i, s in enumerate(sessions):
                 marker = c(Icons.ARROW, Colors.CYAN) if i == 0 else " "
                 s_name = s["name"]
@@ -321,20 +344,18 @@ def main():
 
         if cmd_lower == "session new":
             new_name = session_mgr.new_session()
-            workspace_tree = scan_workspace_tree(WORKING_DIR)
-            print(
-                f"  {c(Icons.SUCCESS, Colors.GREEN)}  New session: {c(new_name, Colors.CYAN)}"
-            )
+            scan_workspace_tree(WDIR)  # refresh for next prompt
+            print(f"  {c(Icons.SUCCESS, Colors.GREEN)}  New session: {c(new_name, Colors.CYAN)}")
             continue
 
         if cmd_lower.startswith("session load "):
-            target = user_prompt.strip()[len("session load "):].strip()
+            target = user_prompt.strip()[len("session load ") :].strip()
             if not target:
                 show_error("Usage: session load <name>")
                 continue
             try:
                 name, msg_count = session_mgr.load(target)
-                workspace_tree = scan_workspace_tree(WORKING_DIR)
+                scan_workspace_tree(WDIR)  # refresh for next prompt
                 print(
                     f"  {c(Icons.SUCCESS, Colors.GREEN)}  Loaded session: {c(name, Colors.CYAN)} ({msg_count} messages)"
                 )
@@ -343,7 +364,7 @@ def main():
             continue
 
         if cmd_lower.startswith("session delete "):
-            target = user_prompt.strip()[len("session delete "):].strip()
+            target = user_prompt.strip()[len("session delete ") :].strip()
             if not target:
                 show_error("Usage: session delete <name>")
                 continue
@@ -367,13 +388,13 @@ def main():
         session_mgr.add_message("user", user_prompt)
 
         # Agentic Loop
-        system_prompt = build_system_prompt()
+        system_prompt = build_system_prompt(WDIR)
         auto_fix_count = 0
-        active_model = ollama.active_model
+        active_model = client.active_model
 
         # Reset to primary model at the start of each turn
-        ollama.reset()
-        active_model = ollama.active_model
+        client.reset()
+        active_model = client.active_model
 
         for step in range(MAX_AGENT_STEPS):
             if verbose_mode:
@@ -382,9 +403,10 @@ def main():
                 spinner.start()
 
             try:
-                response = client.chat.completions.create(
+                response = client.chat_completion(
                     model=active_model,
-                    messages=[{"role": "system", "content": system_prompt}] + session_mgr.get_messages(),
+                    messages=[{"role": "system", "content": system_prompt}]
+                    + session_mgr.get_messages(),
                     tools=available_tools,
                     tool_choice="auto",
                     max_tokens=MAX_TOKENS,
@@ -396,7 +418,7 @@ def main():
 
                 # Try model fallback on recoverable errors
                 if should_fallback(error_str):
-                    new_model = ollama.fallback()
+                    new_model = client.fallback()
                     if new_model:
                         print(
                             f"  {c(Icons.INFO, Colors.DIM)}  "
@@ -475,7 +497,7 @@ def main():
                         show_verbose_function(func_name, func_args)
 
                     # Execute the tool
-                    result = execute_tool(func_name, func_args, WORKING_DIR, verbose_mode)
+                    result = execute_tool(func_name, func_args, WDIR, verbose_mode)
 
                     # Show output
                     if not verbose_mode:
@@ -486,9 +508,7 @@ def main():
 
                     # Send tool result back to model
                     result_str = (
-                        json.dumps(result)
-                        if isinstance(result, (dict, list))
-                        else str(result)
+                        json.dumps(result) if isinstance(result, (dict, list)) else str(result)
                     )
                     session_mgr.add_message(
                         role="tool",
@@ -498,7 +518,7 @@ def main():
 
                     # Refresh workspace after file-mutating operations
                     if func_name in FILE_MUTATING_TOOLS:
-                        workspace_tree = scan_workspace_tree(WORKING_DIR)
+                        scan_workspace_tree(WDIR)  # updates prompt on next turn
 
                     # Auto-fix on execution errors
                     if func_name in ("run_code", "run_command") and has_execution_error(result_str):
@@ -541,7 +561,7 @@ def main():
                 show_agent_response(content)
 
                 # Show token usage
-                if hasattr(response, "usage") and response.usage:
+                if response.usage:
                     usage = response.usage
                     total = usage.prompt_tokens + usage.completion_tokens
                     print(
@@ -558,7 +578,7 @@ def main():
                 break
 
             # Show usage in verbose mode
-            if verbose_mode and hasattr(response, "usage") and response.usage:
+            if verbose_mode and response.usage:
                 usage = response.usage
                 show_verbose_tokens(usage.prompt_tokens, usage.completion_tokens)
 

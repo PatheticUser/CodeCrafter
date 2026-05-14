@@ -1,52 +1,44 @@
-"""Animated spinner for CodeCrafter — clean, minimal."""
+"""Animated spinner for CodeCrafter."""
 
 import random
 import threading
 import time
 import sys
 
-from config import (
-    SPINNER_FRAMES,
-    SPINNER_WORDS,
-    SPINNER_FRAME_DURATION,
-    SPINNER_WORD_SWITCH_INTERVAL,
-)
-from .display import c, Colors, dim
+from src.core.settings import settings
+from src.cli.display import c, Colors, dim
 
 
 class Spinner:
-    """Animated terminal spinner with clean animation."""
+    """Animated terminal spinner with NerdFont circle animation."""
 
     def __init__(self):
         self._stop_event = threading.Event()
         self._thread = None
         self._frame_index = 0
 
-    def start(self, message: str = ""):
+    def start(self):
         self._stop_event.clear()
-        self._custom_message = message
         self._thread = threading.Thread(target=self._spin, daemon=True)
         self._thread.start()
 
     def _spin(self):
-        word = random.choice(SPINNER_WORDS)
+        word = random.choice(settings.SPINNER_WORDS)
         last_switch = time.time()
         try:
             while not self._stop_event.is_set():
                 now = time.time()
-                if now - last_switch >= SPINNER_WORD_SWITCH_INTERVAL:
-                    word = random.choice(SPINNER_WORDS)
+                if now - last_switch >= settings.SPINNER_WORD_SWITCH_INTERVAL:
+                    word = random.choice(settings.SPINNER_WORDS)
                     last_switch = now
-                frame = SPINNER_FRAMES[self._frame_index % len(SPINNER_FRAMES)]
+                frame = settings.SPINNER_FRAMES[self._frame_index % len(settings.SPINNER_FRAMES)]
                 self._frame_index += 1
-
-                msg = self._custom_message or word
-                line = f"\r  {c(frame, Colors.CYAN)}  {dim(msg)}"
+                line = f"\r  {c(frame, Colors.CYAN)}  {dim(word)}"
                 sys.stdout.write(line)
                 sys.stdout.flush()
-                time.sleep(SPINNER_FRAME_DURATION)
+                time.sleep(settings.SPINNER_FRAME_DURATION)
         finally:
-            sys.stdout.write("\r" + " " * 60 + "\r")
+            sys.stdout.write("\r" + " " * 50 + "\r")
             sys.stdout.flush()
 
     def stop(self):
@@ -55,5 +47,4 @@ class Spinner:
             self._thread.join(timeout=1)
 
 
-# Global spinner instance
 spinner = Spinner()

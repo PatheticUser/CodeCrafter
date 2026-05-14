@@ -14,16 +14,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Directory Configuration
 # =============================================================================
 
-# Working directory - Change this to point to your target project
-# Default: "workspace" folder in the same directory as this file
-PROJECT_FOLDER_NAME = "workspace"
-WORKING_DIR = os.path.join(BASE_DIR, PROJECT_FOLDER_NAME)
+# Working directory - defaults to current directory (like Claude Code)
+# Override via CODECRAFTER_WORKING_DIR env var or --path CLI flag
+WORKING_DIR = os.environ.get("CODECRAFTER_WORKING_DIR") or os.getcwd()
 
 # Session storage (outside workspace so it doesn't pollute user files)
 SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
-
-# Functions directory
-FUNCTIONS_DIR = os.path.join(BASE_DIR, "functions")
 
 # =============================================================================
 # Session Configuration
@@ -52,11 +48,11 @@ SESSION_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
 OLLAMA_BASE_URL = "http://localhost:11434/v1"
 
 # Default model
-DEFAULT_MODEL = "qwen3.5:cloud"
+DEFAULT_MODEL = "qwen3-coder-next:cloud "
 
 # Available models for --model flag shortcuts
 MODELS = {
-    "qwen3.5": "qwen3.5:cloud",
+    "openai": "gpt-oss:120b-cloud  ",
     "qwen3-coder": "qwen3-coder-next:cloud",
     "nemotron-super": "nemotron-3-super:cloud",
 }
@@ -65,7 +61,7 @@ MODELS = {
 # When the active model fails, CodeCrafter tries the next one automatically.
 # All models must support tool/function calling.
 FALLBACK_MODELS = [
-    "qwen3.5:cloud",              # Primary: strong all-rounder with tool + vision + thinking
+    "gpt-oss:120b-cloud",              # Primary: strong all-rounder with tool + vision + thinking
     "qwen3-coder-next:cloud",     # Coding-focused, agentic workflows
     "nemotron-3-super:cloud",     # NVIDIA 120B MoE, strong reasoning
 ]
@@ -85,9 +81,6 @@ MAX_AUTO_FIX = 3
 
 # Context trimming threshold (number of messages before trimming)
 CONTEXT_TRIM_THRESHOLD = 6
-
-# Number of messages to keep when trimming
-CONTEXT_KEEP_MESSAGES = 6
 
 # =============================================================================
 # UI Configuration
@@ -140,7 +133,7 @@ SPINNER_WORDS = [
     "calibrating ",
 ]
 
-SPINNER_FRAMES = ["󰚔", "󰚕", "󰚖", "󰚗", "󰚘", "󰚙"]
+SPINNER_FRAMES = ["◐", "◓", "◑", "◒"]
 
 # =============================================================================
 # Display Configuration

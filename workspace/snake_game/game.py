@@ -51,11 +51,11 @@ class SnakeGame:
             sys.exit()
     
     def draw(self):
-        self.screen.fill((240, 240, 240))
+        self.screen.fill((30, 30, 30))
         for pos in self.snake:
-            pygame.draw.rect(self.screen, (0, 150, 0), (pos[0], pos[1], 20, 20))
-        pygame.draw.rect(self.screen, (200, 0, 0), (self.apple[0], self.apple[1], 20, 20))
+            pygame.draw.rect(self.screen, (0, 255, 100), (pos[0], pos[1], 20, 20))
+        pygame.draw.rect(self.screen, (255, 100, 100), (self.apple[0], self.apple[1], 20, 20))
         font = pygame.font.Font(None, 36)
-        text = font.render(f'Score: {self.score}', True, (0, 0, 0))
+        text = font.render(f'Score: {self.score}', True, (255, 255, 255))
         self.screen.blit(text, (10, 10))
         pygame.display.flip()

@@ -13,7 +13,7 @@ from config import (
     SESSION_PREFIX,
     SESSION_TIMESTAMP_FORMAT,
 )
-from ui.display import show_warning, c, Colors, Icons, dim
+from ui.display import show_warning
 
 
 def generate_session_name():
@@ -106,24 +106,6 @@ def delete_session_file(session_name):
     return False
 
 
-def show_sessions():
-    """Display all sessions to the user."""
-    sessions = list_sessions()
-    if not sessions:
-        print(f"  {dim(Icons.INFO)}  No saved sessions found.")
-        return
-    print()
-    print(f"  {c(Icons.BRAIN, Colors.CYAN)}  {c('Saved Sessions', Colors.BOLD)}")
-    print(f"  {dim('─' * 52)}")
-    for i, s in enumerate(sessions):
-        marker = c(Icons.ARROW, Colors.CYAN) if i == 0 else " "
-        s_name = s["name"]
-        s_mod = s["modified"]
-        s_msgs = s["messages"]
-        info_line = str(s_mod) + "  |  " + str(s_msgs) + " msgs"
-        print(f"  {marker}  {c(s_name, Colors.CYAN)}  {dim(info_line)}")
-    print()
-
 
 class SessionManager:
     """Manages session state and operations."""
@@ -151,10 +133,6 @@ class SessionManager:
         self.save()
         self.messages, self.current_session_name = load_session(session_name)
         return self.current_session_name, len(self.messages)
-
-    def delete(self, session_name):
-        """Delete a session file."""
-        return delete_session_file(session_name)
 
     def save(self):
         """Save current session."""

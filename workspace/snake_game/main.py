@@ -1,5 +1,3 @@
-import sys
-sys.path.append(r"D:\\Code\\CodeCrafter\\.venv\\Lib\\site-packages")
 import pygame
 import sys
 from game import SnakeGame

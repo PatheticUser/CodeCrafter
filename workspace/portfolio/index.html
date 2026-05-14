@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 100px 20px;
+            text-align: center;
+        }
+        header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        nav {
+            background: #333;
+            padding: 15px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 20px;
+            font-weight: 500;
+        }
+        nav a:hover {
+            color: #667eea;
+        }
+        section {
+            padding: 60px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #667eea;
+        }
+        .about-content {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .skills {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+        .skill-tag {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 500;
+        }
+        .projects {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        .project-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        .project-card:hover {
+            transform: translateY(-5px);
+        }
+        .project-card h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .project-card a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .contact {
+            text-align: center;
+        }
+        .contact a {
+            color: #667eea;
+            font-size: 1.2rem;
+            text-decoration: none;
+            margin: 10px;
+        }
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Your Name</h1>
+        <p>Developer | Creator | Problem Solver</p>
+    </header>
+    <nav>
+        <a href="#about">About</a>
+        <a href="#skills">Skills</a>
+        <a href="#projects">Projects</a>
+        <a href="#contact">Contact</a>
+    </nav>
+    <section id="about">
+        <h2>About Me</h2>
+        <div class="about-content">
+            <p>Hello! I'm a passionate developer who loves creating innovative solutions. I enjoy working on challenging projects and continuously learning new technologies. When I'm not coding, you can find me exploring new ideas and building cool stuff.</p>
+        </div>
+    </section>
+    <section id="skills">
+        <h2>Skills</h2>
+        <div class="skills">
+            <span class="skill-tag">Python</span>
+            <span class="skill-tag">JavaScript</span>
+            <span class="skill-tag">HTML/CSS</span>
+            <span class="skill-tag">React</span>
+            <span class="skill-tag">Node.js</span>
+            <span class="skill-tag">Git</span>
+            <span class="skill-tag">SQL</span>
+            <span class="skill-tag">Game Development</span>
+        </div>
+    </section>
+    <section id="projects">
+        <h2>Projects</h2>
+        <div class="projects">
+            <div class="project-card">
+                <h3>Snake Game</h3>
+                <p>A classic snake game built with Python and Pygame. Features smooth controls and score tracking.</p>
+                <br>
+                <a href="#">View Project →</a>
+            </div>
+            <div class="project-card">
+                <h3>Flappy Bird Clone</h3>
+                <p>A web-based Flappy Bird game using HTML5 Canvas and JavaScript. Fun and addictive gameplay.</p>
+                <br>
+                <a href="#">View Project →</a>
+            </div>
+            <div class="project-card">
+                <h3>Sorting Visualizer</h3>
+                <p>An interactive tool to visualize different sorting algorithms and understand how they work.</p>
+                <br>
+                <a href="#">View Project →</a>
+            </div>
+        </div>
+    </section>
+    <section id="contact">
+        <h2>Contact</h2>
+        <div class="contact">
+            <p>Feel free to reach out! I'm always open to new opportunities and collaborations.</p>
+            <br>
+            <a href="mailto:your.email@example.com">your.email@example.com</a>
+            <br>
+            <a href="#">GitHub</a>
+            <a href="#">LinkedIn</a>
+            <a href="#">Twitter</a>
+        </div>
+    </section>
+    <footer>
+        <p>&copy; 2026 Your Name. All rights reserved.</p>
+    </footer>
+</body>
+</html>
