@@ -1,6 +1,8 @@
 import os
 from datetime import datetime
 
+from src.tools._security import validate_directory
+
 
 def get_files_info(working_directory, directory=".", verbose=True):
     """
@@ -8,17 +10,13 @@ def get_files_info(working_directory, directory=".", verbose=True):
     includes size and last modified time (without reading file content).
     Returns a list of dicts, or an error string if invalid.
     """
+    err = validate_directory(working_directory, directory)
+    if err:
+        return err
+
     files_info = []
-    target_directory = os.path.join(working_directory, directory)
-
-    working_directory_abs = os.path.abspath(working_directory)
-    target_directory_abs = os.path.abspath(target_directory)
-
-    if not (
-        target_directory_abs == working_directory_abs
-        or target_directory_abs.startswith(working_directory_abs + os.sep)
-    ):
-        return f'Error: Cannot list "{directory}" as it is outside the permitted working directory'
+    working_directory_abs = os.path.realpath(working_directory)
+    target_directory_abs = os.path.realpath(os.path.join(working_directory, directory))
 
     if not os.path.exists(target_directory_abs):
         return f'Error: "{directory}" does not exist'

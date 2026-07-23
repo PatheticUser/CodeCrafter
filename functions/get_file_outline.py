@@ -1,6 +1,8 @@
 import os
 import re
 
+from functions._security import validate_path
+
 
 def get_file_outline(working_directory, file_path):
     """
@@ -15,15 +17,12 @@ def get_file_outline(working_directory, file_path):
     Returns:
         Formatted outline string, or error message
     """
-    # --- Security: path traversal check ---
-    working_dir_abs = os.path.abspath(working_directory)
-    target_file_abs = os.path.abspath(os.path.join(working_directory, file_path))
+    # Security: path traversal check
+    err = validate_path(working_directory, file_path)
+    if err:
+        return err
 
-    if not (
-        target_file_abs == working_dir_abs
-        or target_file_abs.startswith(working_dir_abs + os.sep)
-    ):
-        return f'Error: Cannot read "{file_path}" — outside the permitted working directory'
+    target_file_abs = os.path.realpath(os.path.join(working_directory, file_path))
 
     if not os.path.isfile(target_file_abs):
         return f'Error: File not found: "{file_path}"'

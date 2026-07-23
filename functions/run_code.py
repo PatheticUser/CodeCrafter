@@ -4,6 +4,8 @@ import subprocess
 import webbrowser
 import json
 
+from functions._security import validate_path
+
 
 # Language configuration: extension -> (compile_cmd_template, run_cmd_template, needs_compile)
 LANGUAGE_MAP = {
@@ -49,16 +51,13 @@ def run_code(working_directory, path, args=None, timeout=30):
     Returns:
         String with execution output, or error message
     """
-    # --- Security: path traversal check ---
-    working_dir_abs = os.path.abspath(working_directory)
-    full_path = os.path.abspath(os.path.join(working_directory, path))
+    # Security: path traversal check
+    err = validate_path(working_directory, path)
+    if err:
+        return err
 
-    if not (
-        full_path == working_dir_abs or full_path.startswith(working_dir_abs + os.sep)
-    ):
-        return (
-            f'Error: Cannot execute "{path}" — outside the permitted working directory'
-        )
+    working_dir_abs = os.path.realpath(working_directory)
+    full_path = os.path.realpath(os.path.join(working_directory, path))
 
     if not os.path.isfile(full_path):
         return f'Error: File not found: "{path}"'

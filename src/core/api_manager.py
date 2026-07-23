@@ -5,7 +5,6 @@ import sys
 from openai import OpenAI
 
 from src.core.settings import settings
-from src.cli.display import c, Colors, Icons
 
 
 class OllamaClient:
@@ -47,8 +46,8 @@ class OllamaClient:
                 api_key="ollama",
             )
         except Exception as e:
-            print(f"  {c(Icons.ERROR, Colors.RED)}  Failed to connect to Ollama: {e}")
-            print(f"  {c(Icons.INFO, Colors.DIM)}  Make sure Ollama is running: {c('ollama serve', Colors.CYAN)}")
+            print(f"  ERROR: Failed to connect to Ollama: {e}")
+            print(f"  Make sure Ollama is running: ollama serve")
             sys.exit(1)
 
     @property

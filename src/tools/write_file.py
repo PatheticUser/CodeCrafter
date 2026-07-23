@@ -1,19 +1,18 @@
 import os
 
+from src.tools._security import validate_path
+
 
 def write_file(working_directory, file_path, content):
     """
     Safely writes to a file within working_directory.
     Creates the file if it doesn't exist.
     """
-    working_directory_abs = os.path.abspath(working_directory)
-    target_file_abs = os.path.abspath(os.path.join(working_directory, file_path))
+    err = validate_path(working_directory, file_path)
+    if err:
+        return err
 
-    if not (
-        target_file_abs == working_directory_abs
-        or target_file_abs.startswith(working_directory_abs + os.sep)
-    ):
-        return f'Error: Cannot write to "{file_path}" as it is outside the permitted working directory'
+    target_file_abs = os.path.realpath(os.path.join(working_directory, file_path))
 
     try:
         parent_dir = os.path.dirname(target_file_abs)

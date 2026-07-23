@@ -7,14 +7,11 @@ def get_file_outline(working_directory, file_path):
     Returns a token-efficient skeleton of a file: imports, class definitions,
     function signatures with line numbers.
     """
-    working_dir_abs = os.path.abspath(working_directory)
-    target_file_abs = os.path.abspath(os.path.join(working_directory, file_path))
+    err = validate_path(working_directory, file_path)
+    if err:
+        return err
 
-    if not (
-        target_file_abs == working_dir_abs
-        or target_file_abs.startswith(working_dir_abs + os.sep)
-    ):
-        return f'Error: Cannot read "{file_path}" \u2014 outside the permitted working directory'
+    target_file_abs = os.path.realpath(os.path.join(working_directory, file_path))
 
     if not os.path.isfile(target_file_abs):
         return f'Error: File not found: "{file_path}"'

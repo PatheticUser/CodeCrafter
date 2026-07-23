@@ -1,6 +1,8 @@
 import os
 from datetime import datetime
 
+from functions._security import validate_directory
+
 
 def get_files_info(working_directory, directory=".", verbose=True):
     """
@@ -9,19 +11,14 @@ def get_files_info(working_directory, directory=".", verbose=True):
     Returns a list of dicts, or an error string if invalid.
     """
 
+    # Security: path traversal check
+    err = validate_directory(working_directory, directory)
+    if err:
+        return err
+
     files_info = []
-    target_directory = os.path.join(working_directory, directory)
-
-    # Normalize paths
-    working_directory_abs = os.path.abspath(working_directory)
-    target_directory_abs = os.path.abspath(target_directory)
-
-    # 1. Validate path is within working directory (os.sep prevents edge cases)
-    if not (
-        target_directory_abs == working_directory_abs
-        or target_directory_abs.startswith(working_directory_abs + os.sep)
-    ):
-        return f'Error: Cannot list "{directory}" as it is outside the permitted working directory'
+    working_directory_abs = os.path.realpath(working_directory)
+    target_directory_abs = os.path.realpath(os.path.join(working_directory, directory))
 
     # 2. Validate directory exists
     if not os.path.exists(target_directory_abs):

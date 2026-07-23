@@ -3,6 +3,8 @@ import sys
 import subprocess
 import webbrowser
 
+from src.tools._security import validate_path
+
 
 LANGUAGE_MAP = {
     ".py": {"run": ["python", "{file}"], "compile": None},
@@ -35,13 +37,12 @@ def run_code(working_directory, path, args=None, timeout=30):
     Universal code runner. Auto-detects language from file extension.
     Compiles if needed, then executes. Cleans up compiled binaries.
     """
-    working_dir_abs = os.path.abspath(working_directory)
-    full_path = os.path.abspath(os.path.join(working_directory, path))
+    err = validate_path(working_directory, path)
+    if err:
+        return err
 
-    if not (
-        full_path == working_dir_abs or full_path.startswith(working_dir_abs + os.sep)
-    ):
-        return f'Error: Cannot execute "{path}" \u2014 outside the permitted working directory'
+    working_dir_abs = os.path.realpath(working_directory)
+    full_path = os.path.realpath(os.path.join(working_directory, path))
 
     if not os.path.isfile(full_path):
         return f'Error: File not found: "{path}"'

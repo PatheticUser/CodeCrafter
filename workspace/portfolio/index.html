@@ -3,185 +3,1065 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Portfolio</title>
+    <title>CodeCrafter — AI-Powered Terminal Agent</title>
+    <meta name="description" content="CodeCrafter is an AI-powered CLI agent that reads, writes, executes, and debugs code in your terminal. Powered by cloud models with automatic fallback.">
+    <meta property="og:title" content="CodeCrafter — AI-Powered Terminal Agent">
+    <meta property="og:description" content="An AI-powered CLI agent that reads, writes, executes, and debugs code right in your terminal.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://github.com/PatheticUser/CodeCrafter">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="CodeCrafter — AI-Powered Terminal Agent">
+    <meta name="twitter:description" content="An AI-powered CLI agent that reads, writes, executes, and debugs code right in your terminal.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⌨</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a2e;
+            --border: #2a2a3e;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --accent-subtle: #818cf8;
+            --green: #22c55e;
+            --green-glow: rgba(34, 197, 94, 0.2);
+            --cyan: #06b6d4;
+            --text-primary: #f1f1f7;
+            --text-secondary: #9494b8;
+            --text-muted: #5c5c7a;
+            --gradient: linear-gradient(135deg, #6366f1, #a855f7, #6366f1);
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             line-height: 1.6;
-            color: #333;
+            overflow-x: hidden;
         }
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 100px 20px;
-            text-align: center;
-        }
-        header h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-        }
-        header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-        nav {
-            background: #333;
-            padding: 15px;
-            text-align: center;
-            position: sticky;
+
+        /* ── Background Effects ── */
+        .bg-grid {
+            position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
         }
-        nav a {
-            color: white;
-            text-decoration: none;
-            margin: 0 20px;
-            font-weight: 500;
+
+        .bg-glow {
+            position: fixed;
+            top: -40vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80vw;
+            height: 80vh;
+            background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
         }
-        nav a:hover {
-            color: #667eea;
-        }
-        section {
-            padding: 60px 20px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        h2 {
-            text-align: center;
-            margin-bottom: 40px;
-            color: #667eea;
-        }
-        .about-content {
-            text-align: center;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .skills {
+
+        /* ── Navigation ── */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 16px 24px;
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
             display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
+            align-items: center;
+            justify-content: space-between;
         }
-        .skill-tag {
-            background: #667eea;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 25px;
+
+        .nav-logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.2rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
             font-weight: 500;
+            transition: color 0.2s;
         }
-        .projects {
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-cta {
+            padding: 8px 20px;
+            border-radius: 8px;
+            background: var(--accent);
+            color: white !important;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .nav-cta:hover {
+            box-shadow: 0 0 20px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        /* ── Container ── */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Hero ── */
+        .hero {
+            padding: 140px 0 80px;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 100px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--accent-subtle);
+            margin-bottom: 24px;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.8rem, 6vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            letter-spacing: -0.03em;
+        }
+
+        .hero h1 .gradient-text {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% 200%;
+            animation: gradient-shift 4s ease infinite;
+        }
+
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero p {
+            font-size: clamp(1.05rem, 1.5vw, 1.2rem);
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin: 0 auto 40px;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 30px var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* ── Terminal Mockup ── */
+        .terminal-mockup {
+            margin: 60px auto 0;
+            max-width: 800px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: #0d0d14;
+            box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5);
+            text-align: left;
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #14141e;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background: #ef4444; }
+        .terminal-dot.yellow { background: #eab308; }
+        .terminal-dot.green { background: #22c55e; }
+
+        .terminal-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-left: 12px;
+        }
+
+        .terminal-body {
+            padding: 20px 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            min-height: 260px;
+        }
+
+        .terminal-line {
+            display: flex;
+            gap: 12px;
+            opacity: 0;
+            animation: terminal-fade 0.5s ease forwards;
+        }
+
+        .terminal-line .prompt {
+            color: var(--green);
+            flex-shrink: 0;
+        }
+
+        .terminal-line .cmd {
+            color: var(--text-primary);
+        }
+
+        .terminal-line .output {
+            color: var(--text-secondary);
+        }
+
+        .terminal-line .accent {
+            color: var(--cyan);
+        }
+
+        .terminal-line .accent-purple {
+            color: var(--accent-subtle);
+        }
+
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 18px;
+            background: var(--accent);
+            animation: blink 1s step-end infinite;
+            vertical-align: text-bottom;
+            margin-left: 2px;
+        }
+
+        @keyframes terminal-fade {
+            to { opacity: 1; }
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* ── Section Common ── */
+        section {
+            padding: 100px 0;
+        }
+
+        .section-label {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-subtle);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 3.5vw, 2.8rem);
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+
+        .section-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto 60px;
+            text-align: center;
+        }
+
+        .section-centered {
+            text-align: center;
+        }
+
+        /* ── Features ── */
+        .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
+            gap: 24px;
         }
-        .project-card {
-            background: #f8f9fa;
+
+        .feature-card {
+            padding: 32px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-icon {
+            width: 44px;
+            height: 44px;
             border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
         }
-        .project-card:hover {
-            transform: translateY(-5px);
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
         }
-        .project-card h3 {
-            margin-bottom: 15px;
-            color: #333;
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            line-height: 1.7;
         }
-        .project-card a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
+
+        /* ── How It Works ── */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 32px;
+            counter-reset: step;
         }
-        .contact {
+
+        .step {
             text-align: center;
+            padding: 40px 24px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            position: relative;
         }
-        .contact a {
-            color: #667eea;
-            font-size: 1.2rem;
-            text-decoration: none;
-            margin: 10px;
-        }
-        footer {
-            background: #333;
+
+        .step::before {
+            counter-increment: step;
+            content: counter(step);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent);
             color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin: 0 auto 20px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .step h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .step p {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+        }
+
+        .step .code-snippet {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 8px 16px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-subtle);
+        }
+
+        /* ── Model Chain ── */
+        .model-chain {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .model-card {
+            padding: 20px 28px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             text-align: center;
-            padding: 20px;
-            margin-top: 40px;
+            min-width: 180px;
+            transition: all 0.3s;
+        }
+
+        .model-card:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .model-card .model-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .model-card .model-desc {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .model-card .model-badge {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .model-card .badge-primary { background: rgba(99, 102, 241, 0.15); color: var(--accent-subtle); }
+        .model-card .badge-fallback { background: rgba(6, 182, 212, 0.15); color: var(--cyan); }
+        .model-card .badge-secondary { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+
+        /* ── Commands Table ── */
+        .commands-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .commands-table th {
+            background: var(--bg-card);
+            padding: 14px 20px;
+            text-align: left;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .commands-table td {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.92rem;
+        }
+
+        .commands-table code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--cyan);
+            background: rgba(6, 182, 212, 0.08);
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        .commands-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* ── Security ── */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .security-item {
+            padding: 24px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .security-item .check {
+            color: var(--green);
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .security-item h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .security-item p {
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+        }
+
+        /* ── CTA ── */
+        .cta-section {
+            text-align: center;
+            padding: 100px 0;
+            position: relative;
+        }
+
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .cta-section h2 {
+            font-size: clamp(2rem, 3.5vw, 2.8rem);
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .cta-section p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 540px;
+            margin: 0 auto 36px;
+        }
+
+        .cta-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* ── Footer ── */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 40px 24px;
+            text-align: center;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+        }
+
+        footer .footer-links {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        footer .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        footer .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            nav {
+                padding: 12px 16px;
+            }
+
+            .nav-links a:not(.nav-cta) {
+                display: none;
+            }
+
+            .hero {
+                padding: 110px 0 60px;
+            }
+
+            .terminal-body {
+                padding: 16px;
+                font-size: 0.75rem;
+                min-height: 200px;
+            }
+
+            section {
+                padding: 60px 0;
+            }
+
+            .features-grid,
+            .steps,
+            .security-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .commands-table {
+                font-size: 0.85rem;
+            }
+
+            .commands-table th,
+            .commands-table td {
+                padding: 10px 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .terminal-body {
+                font-size: 0.68rem;
+                padding: 12px;
+                min-height: 160px;
+            }
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Your Name</h1>
-        <p>Developer | Creator | Problem Solver</p>
-    </header>
+
+    <!-- Background -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <!-- Navigation -->
     <nav>
-        <a href="#about">About</a>
-        <a href="#skills">Skills</a>
-        <a href="#projects">Projects</a>
-        <a href="#contact">Contact</a>
+        <div class="nav-logo">~/codecrafter</div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#models">Models</a>
+            <a href="#security">Security</a>
+            <a href="#install" class="nav-cta">Get Started</a>
+        </div>
     </nav>
-    <section id="about">
-        <h2>About Me</h2>
-        <div class="about-content">
-            <p>Hello! I'm a passionate developer who loves creating innovative solutions. I enjoy working on challenging projects and continuously learning new technologies. When I'm not coding, you can find me exploring new ideas and building cool stuff.</p>
-        </div>
-    </section>
-    <section id="skills">
-        <h2>Skills</h2>
-        <div class="skills">
-            <span class="skill-tag">Python</span>
-            <span class="skill-tag">JavaScript</span>
-            <span class="skill-tag">HTML/CSS</span>
-            <span class="skill-tag">React</span>
-            <span class="skill-tag">Node.js</span>
-            <span class="skill-tag">Git</span>
-            <span class="skill-tag">SQL</span>
-            <span class="skill-tag">Game Development</span>
-        </div>
-    </section>
-    <section id="projects">
-        <h2>Projects</h2>
-        <div class="projects">
-            <div class="project-card">
-                <h3>Snake Game</h3>
-                <p>A classic snake game built with Python and Pygame. Features smooth controls and score tracking.</p>
-                <br>
-                <a href="#">View Project →</a>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-badge">✦ v3.0 — Now with Cloud Models</div>
+            <h1>
+                Your AI Coding Agent,<br>
+                <span class="gradient-text">Right in the Terminal</span>
+            </h1>
+            <p>
+                CodeCrafter is an AI-powered CLI agent that reads, writes, executes, and debugs code
+                in your project — without leaving the terminal. Powered by cloud models with automatic fallback.
+            </p>
+            <div class="hero-actions">
+                <a href="#install" class="btn btn-primary">
+                    <span>↓</span> Get Started
+                </a>
+                <a href="#features" class="btn btn-secondary">
+                    Explore Features →
+                </a>
             </div>
-            <div class="project-card">
-                <h3>Flappy Bird Clone</h3>
-                <p>A web-based Flappy Bird game using HTML5 Canvas and JavaScript. Fun and addictive gameplay.</p>
-                <br>
-                <a href="#">View Project →</a>
-            </div>
-            <div class="project-card">
-                <h3>Sorting Visualizer</h3>
-                <p>An interactive tool to visualize different sorting algorithms and understand how they work.</p>
-                <br>
-                <a href="#">View Project →</a>
+
+            <!-- Terminal Mockup -->
+            <div class="terminal-mockup">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                    <span class="terminal-title">~/my-project — codecrafter</span>
+                </div>
+                <div class="terminal-body">
+                    <div class="terminal-line" style="animation-delay: 0.1s;">
+                        <span class="prompt">❯</span>
+                        <span class="cmd">cd my-project && codecrafter</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 0.4s;">
+                        <span class="prompt">◐</span>
+                        <span class="accent">analyzing workspace...</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 0.7s;">
+                        <span class="prompt">◒</span>
+                        <span class="accent">loading project structure</span>
+                        <span class="output">(42 files detected)</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 1.0s;">
+                        <span class="prompt">◆</span>
+                        <span class="accent-purple">Connected to gpt-oss:120b-cloud</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 1.3s;">
+                        <span class="prompt" style="color: var(--accent-subtle);">●</span>
+                        <span class="accent">crafting a new REST API endpoint...</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 1.6s;">
+                        <span class="prompt">✱</span>
+                        <span class="cmd">✱ build a user auth endpoint</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 2.0s;">
+                        <span class="prompt">⏺</span>
+                        <span class="accent-purple">write_file</span>
+                        <span class="output">app/routes/auth.py</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 2.3s;">
+                        <span class="prompt">⏺</span>
+                        <span class="accent-purple">edit_file</span>
+                        <span class="output">app/main.py</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 2.6s;">
+                        <span class="prompt">⏺</span>
+                        <span class="accent-purple">run_command</span>
+                        <span class="output">uv add fastapi uvicorn</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 3.0s;">
+                        <span class="prompt">⏺</span>
+                        <span class="accent-purple">run_command</span>
+                        <span class="output">python -m pytest tests/</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 3.4s;">
+                        <span class="prompt" style="color: var(--green);">✔</span>
+                        <span class="cmd" style="color: var(--green);">All tests pass! Auth endpoint is ready.</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 3.8s;">
+                        <span class="prompt">❯</span>
+                        <span class="cmd">_<span class="terminal-cursor"></span></span>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
-    <section id="contact">
-        <h2>Contact</h2>
-        <div class="contact">
-            <p>Feel free to reach out! I'm always open to new opportunities and collaborations.</p>
-            <br>
-            <a href="mailto:your.email@example.com">your.email@example.com</a>
-            <br>
-            <a href="#">GitHub</a>
-            <a href="#">LinkedIn</a>
-            <a href="#">Twitter</a>
+
+    <!-- Features -->
+    <section id="features">
+        <div class="container">
+            <div class="section-centered">
+                <span class="section-label">✦ Features</span>
+                <h2 class="section-title">Built for the Terminal</h2>
+                <p class="section-subtitle">
+                    Everything you need from an AI coding agent, designed for speed and control.
+                </p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(99, 102, 241, 0.15);">⚡</div>
+                    <h3>Cloud-Powered Inference</h3>
+                    <p>
+                        No need for a local GPU. CodeCrafter uses hosted cloud models for fast, 
+                        intelligent responses with automatic fallback when a model is unavailable.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(34, 197, 94, 0.15);">📁</div>
+                    <h3>Local File Operations</h3>
+                    <p>
+                        Reads, writes, edits, and deletes files in your project directory — 
+                        all sandboxed with path traversal protection.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(6, 182, 212, 0.15);">⚙️</div>
+                    <h3>Multi-Language Execution</h3>
+                    <p>
+                        Run Python, JavaScript, C++, HTML, and more directly from the CLI. 
+                        Auto-detects language and installs missing dependencies.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(234, 179, 8, 0.15);">🔄</div>
+                    <h3>Self-Correcting</h3>
+                    <p>
+                        Automatically detects runtime errors, installs missing packages, 
+                        and retries — no manual intervention needed.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(168, 85, 247, 0.15);">💬</div>
+                    <h3>Persistent Sessions</h3>
+                    <p>
+                        Full conversation history preserved across restarts. 
+                        Save, load, and manage multiple sessions effortlessly.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(239, 68, 68, 0.15);">🔒</div>
+                    <h3>Sandboxed Security</h3>
+                    <p>
+                        Path traversal protection, command blocklist, and workspace confinement 
+                        keep your system safe from destructive operations.
+                    </p>
+                </div>
+            </div>
         </div>
     </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works">
+        <div class="container">
+            <div class="section-centered">
+                <span class="section-label">⌨️ How It Works</span>
+                <h2 class="section-title">Start in Seconds</h2>
+                <p class="section-subtitle">
+                    One install, zero config. Run it in any project directory.
+                </p>
+            </div>
+
+            <div class="steps">
+                <div class="step">
+                    <h3>Install CodeCrafter</h3>
+                    <p>Clone the repo and install dependencies with a single command.</p>
+                    <span class="code-snippet">git clone &amp;&amp; uv sync</span>
+                </div>
+                <div class="step">
+                    <h3>Run It in Your Project</h3>
+                    <p>Navigate to any project and start the agent. It reads your workspace automatically.</p>
+                    <span class="code-snippet">cd my-project &amp;&amp; uv run main.py</span>
+                </div>
+                <div class="step">
+                    <h3>Describe What to Build</h3>
+                    <p>Just type what you need. CodeCrafter writes code, runs commands, and debugs errors — autonomously.</p>
+                    <span class="code-snippet">build a REST API with FastAPI</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- In-Agent Commands -->
+    <section>
+        <div class="container">
+            <div class="section-centered">
+                <span class="section-label">⌨️ Commands</span>
+                <h2 class="section-title">Control from the CLI</h2>
+                <p class="section-subtitle">
+                    All the commands you need, available right in the agent session.
+                </p>
+            </div>
+
+            <table class="commands-table">
+                <thead>
+                    <tr>
+                        <th>Command</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>help</code></td>
+                        <td>Show available commands and usage</td>
+                    </tr>
+                    <tr>
+                        <td><code>sessions</code></td>
+                        <td>List all saved sessions</td>
+                    </tr>
+                    <tr>
+                        <td><code>session new</code></td>
+                        <td>Start a fresh session</td>
+                    </tr>
+                    <tr>
+                        <td><code>session load &lt;name&gt;</code></td>
+                        <td>Resume a previous session</td>
+                    </tr>
+                    <tr>
+                        <td><code>session delete &lt;name&gt;</code></td>
+                        <td>Delete a saved session</td>
+                    </tr>
+                    <tr>
+                        <td><code>clear</code></td>
+                        <td>Clear current conversation history</td>
+                    </tr>
+                    <tr>
+                        <td><code>exit</code> / <code>quit</code></td>
+                        <td>Save and exit the agent</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Model Chain -->
+    <section id="models">
+        <div class="container">
+            <div class="section-centered">
+                <span class="section-label">🤖 Models</span>
+                <h2 class="section-title">Smart Fallback Chain</h2>
+                <p class="section-subtitle">
+                    If a model hits a rate limit or becomes unavailable, CodeCrafter 
+                    automatically switches to the next one — zero interruptions.
+                </p>
+            </div>
+
+            <div class="model-chain">
+                <div class="model-card">
+                    <div class="model-name">gpt-oss:120b-cloud</div>
+                    <div class="model-desc">Primary — strong all-rounder</div>
+                    <span class="model-badge badge-primary">Primary</span>
+                </div>
+                <div class="model-card">
+                    <div class="model-name">gpt-oss:120b-cloud</div>
+                    <div class="model-desc">Coding-focused, agentic workflows</div>
+                    <span class="model-badge badge-fallback">Fallback 1</span>
+                </div>
+                <div class="model-card">
+                    <div class="model-name">nemotron-3-super:cloud</div>
+                    <div class="model-desc">NVIDIA 120B MoE — strong reasoning</div>
+                    <span class="model-badge badge-secondary">Fallback 2</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security -->
+    <section id="security">
+        <div class="container">
+            <div class="section-centered">
+                <span class="section-label">🔒 Security</span>
+                <h2 class="section-title">Safe by Default</h2>
+                <p class="section-subtitle">
+                    CodeCrafter executes code on your local machine with multiple safety layers.
+                </p>
+            </div>
+
+            <div class="security-grid">
+                <div class="security-item">
+                    <div class="check">✓</div>
+                    <div>
+                        <h4>Workspace Confinement</h4>
+                        <p>File operations are restricted to the working directory with path traversal protection.</p>
+                    </div>
+                </div>
+                <div class="security-item">
+                    <div class="check">✓</div>
+                    <div>
+                        <h4>Command Blocklist</h4>
+                        <p>Destructive patterns (rm -rf /, mkfs, etc.) and sensitive paths are blocked by default.</p>
+                    </div>
+                </div>
+                <div class="security-item">
+                    <div class="check">✓</div>
+                    <div>
+                        <h4>No Remote Execution</h4>
+                        <p>Everything runs locally on your machine. No code is sent to external servers for execution.</p>
+                    </div>
+                </div>
+                <div class="security-item">
+                    <div class="check">✓</div>
+                    <div>
+                        <h4>You're in Control</h4>
+                        <p>Review what the agent writes and runs. All actions are displayed in real-time in the terminal.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section id="install" class="cta-section">
+        <div class="container">
+            <h2>Ready to Ship Faster?</h2>
+            <p>
+                CodeCrafter is free and open source. Clone it, run it, and let the agent handle the boilerplate.
+            </p>
+            <div class="cta-actions">
+                <a href="https://github.com/PatheticUser/CodeCrafter" class="btn btn-primary" target="_blank">
+                    <span>⎇</span> Clone on GitHub
+                </a>
+                <a href="#features" class="btn btn-secondary">
+                    Learn More →
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
     <footer>
-        <p>&copy; 2026 Your Name. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://github.com/PatheticUser/CodeCrafter" target="_blank">GitHub</a>
+            <a href="https://github.com/PatheticUser/CodeCrafter/blob/main/README.md" target="_blank">Docs</a>
+        </div>
+        <p>&copy; 2026 CodeCrafter. MIT License.</p>
     </footer>
+
 </body>
 </html>

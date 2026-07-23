@@ -3,59 +3,107 @@
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-CodeCrafter is a local AI coding agent that runs in your terminal. It reads, writes, executes, and debugs code in a sandboxed workspace — powered by [Ollama](https://ollama.com) cloud models for fast, private inference with automatic model fallback.
+**Learn how AI coding agents work — by building one.**
 
-## Key Features
+CodeCrafter is an educational AI coding agent that runs in your terminal. You give it a prompt, and it reads, writes, executes, and debugs code in a sandboxed workspace — powered by [Ollama](https://ollama.com) cloud models with automatic fallback between models.
 
-- **Multi-Language Execution** — Run Python, C++, JavaScript, HTML/CSS, and more directly from the CLI
-- **Automatic Model Fallback** — If a model hits rate limits or errors out, seamlessly switches to the next one in the chain
-- **Intelligent Workspace** — Auto-creates project folders, isolates scripts, maintains workspace context
-- **Persistent Sessions** — Full conversation history preserved across restarts
-- **Self-Correcting** — Automatically detects errors, installs missing dependencies, and retries
-- **Sandboxed Security** — Path traversal protection and dangerous command blocklist keep operations safe
+This project is structured to be **easy to read and understand**. The agent loop, tool execution, and LLM interaction are all visible in a few key files.
 
-## Installation
+---
 
-### Prerequisites
+## Why Build This?
 
-- Python 3.11+
-- [`uv`](https://docs.astral.sh/uv/) (recommended) or `pip`
-- [Ollama](https://ollama.com) installed and running
+Commercial tools like Claude Code, Cursor, and GitHub Copilot hide their internals behind polished UIs. CodeCrafter shows you exactly what's happening:
 
-### Setup
+- How an LLM decides what tools to call
+- How tool results are fed back into the conversation
+- How model fallback works when a model errors
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/PatheticUser/CodeCrafter
-   cd CodeCrafter
-   ```
+- How workspace scanning gives the agent file awareness
 
-2. **Install dependencies:**
-   ```bash
-   uv sync
-   ```
+Everything runs locally through [Ollama](https://ollama.com) — your code never leaves your machine.
 
-3. **Start Ollama:**
-   ```bash
-   ollama serve
-   ```
+---
 
-   Cloud models are fetched automatically on first use — no need to pull manually.
+## Quick Start
+
+```bash
+# 1. Clone & install
+git clone https://github.com/PatheticUser/CodeCrafter
+cd CodeCrafter
+uv sync
+
+# 2. Start Ollama (in another terminal)
+ollama serve
+
+# 3. Run the agent
+uv run main.py
+```
+
+> **First run?** Cloud models are fetched automatically — no need to pull them manually.
+> Type `help` in the agent to see available commands. Type `exit` to quit.
+
+---
+
+## Architecture
+
+```
+CodeCrafter/
+├── main.py                           # Agent loop (LLM → tools → results → repeat)
+├── config.py                         # All knobs: models, limits, UI settings
+│
+├── core/                             # LLM connection & workspace
+│   ├── api_manager.py                #   Ollama client + model fallback chain
+│   └── workspace.py                  #   Workspace tree scanner (context for the LLM)
+│
+├── functions/                        # 9 tools the agent can call
+│   ├── get_files_info                #   List workspace files
+│   ├── get_file_content              #   Read file (with line ranges)
+│   ├── get_file_outline              #   File structure skeleton
+│   ├── write_file                    #   Create files
+│   ├── edit_file                     #   Surgical find-and-replace edits
+│   ├── delete_file                   #   Remove files safely
+│   ├── run_code                      #   Execute code (Python, JS, C++, Go, Rust, …)
+│   ├── run_command                   #   Run shell commands (pip, npm, git, …)
+│   └── search_files                  #   Grep-like pattern search
+│
+
+├── ui/                               # Terminal display
+│   ├── display.py                    #   Colors, icons, banners, agent response
+│   └── spinner.py                    #   Animated thinking spinner
+│
+└── workspace/                        # Sandbox for all file operations
+```
+
+### How the Agent Loop Works
+
+This is the core flow, which you can trace through `main.py`:
+
+```
+1. User types a prompt
+2. System prompt is built with workspace tree + tool definitions
+3. LLM receives (system + conversation history + user prompt)
+4. LLM responds with either:
+   a. A tool call → tool executes → result sent back → goto 3
+   b. A text answer → shown to user → turn ends
+5. If tool execution errors → auto-fix injects a correction → goto 3
+6. If model fails → fallback to next model in chain → goto 3
+7. Session saved after each turn
+```
+
+---
 
 ## Usage
 
 ```bash
+# Basic
 uv run main.py
-```
 
-For verbose mode with step-by-step tool inspection:
-```bash
+# Verbose — see every tool call, arguments, and result
 uv run main.py --verbose
-```
 
-Use a specific model:
-```bash
-uv run main.py --model qwen3-coder
+# Use a specific model
+uv run main.py --model nemotron-super
 ```
 
 ### In-Agent Commands
@@ -63,88 +111,78 @@ uv run main.py --model qwen3-coder
 | Command | Description |
 |---------|-------------|
 | `help` | Show available commands |
-| `sessions` | List saved sessions |
-| `session new` | Start a new session |
-| `session load <name>` | Load a saved session |
-| `session delete <name>` | Delete a session |
-| `clear` | Clear current session history |
+
 | `exit` / `quit` | Save and exit |
+
+---
 
 ## Model Fallback
 
-CodeCrafter uses a chain of Ollama cloud models. If the primary model fails (rate limit, unavailable, overloaded), it automatically switches to the next one:
+CodeCrafter chains multiple Ollama cloud models. If one fails (rate limit, unavailable, overloaded), it automatically tries the next:
 
 | Priority | Model | Strengths |
 |----------|-------|-----------|
-| 1 (Primary) | `qwen3.5:cloud` | All-rounder — tools, vision, thinking |
-| 2 | `qwen3-coder-next:cloud` | Coding-focused, agentic workflows |
-| 3 | `nemotron-3-super:cloud` | NVIDIA 120B MoE, strong reasoning |
+| 1 (Primary) | `gpt-oss:120b-cloud` | Open-weight foundation model |
+| 2 | `nemotron-3-super:cloud` | NVIDIA 120B MoE, strong reasoning |
 
-You can override the primary model with `--model`:
+Override with `--model`:
 
 ```bash
-# Use a shortcut
-uv run main.py --model nemotron-super
-
-# Or any Ollama model directly
-uv run main.py --model llama3:latest
+uv run main.py --model gpt-oss      # shortcut
+uv run main.py --model llama3:latest # any Ollama model
 ```
 
-**Model shortcuts:** `qwen3.5`, `qwen3-coder`, `nemotron-super`
+**Shortcuts:** `gpt-oss`, `nemotron-super`
 
-To customize the fallback chain, edit `FALLBACK_MODELS` in `config.py`.
+Edit the fallback chain in `config.py` → `FALLBACK_MODELS`.
 
-## Architecture
-
-```
-CodeCrafter/
-├── main.py              # Core agent loop and CLI
-├── config.py            # Configuration (models, limits, UI)
-├── core/
-│   ├── api_manager.py   # Ollama client + model fallback
-│   └── workspace.py     # Workspace tree scanning
-├── ui/                  # Terminal interface and ANSI formatting
-├── chat_session/        # Session persistence
-├── functions/           # Tool implementations
-│   ├── get_files_info   # List workspace files
-│   ├── get_file_content # Read file contents
-│   ├── get_file_outline # File structure overview
-│   ├── write_file       # Create new files
-│   ├── edit_file        # Modify existing files
-│   ├── delete_file      # Remove files
-│   ├── run_code         # Execute code (auto-detects language)
-│   ├── run_command      # Run shell commands
-│   └── search_files     # Grep-like pattern search
-├── sessions/            # Session storage (gitignored)
-└── workspace/           # Sandboxed working directory
-```
+---
 
 ## Configuration
 
-All settings live in `config.py`:
+All settings are in `config.py`. Key ones:
 
-| Setting | Default | Description |
+| Setting | Default | What it does |
 |---------|---------|-------------|
 | `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Ollama API endpoint |
-| `DEFAULT_MODEL` | `qwen3.5:cloud` | Primary model |
-| `FALLBACK_MODELS` | `[qwen3.5, qwen3-coder-next, nemotron-3-super]` | Model fallback chain |
-| `MAX_TOKENS` | `4096` | Max tokens per response |
-| `MAX_AGENT_STEPS` | `25` | Max tool steps per turn |
+| `DEFAULT_MODEL` | `gpt-oss:120b-cloud` | Primary model |
+| `FALLBACK_MODELS` | 2 models | Ordered fallback chain |
+| `MAX_TOKENS` | `4096` | Max tokens per LLM response |
+| `MAX_AGENT_STEPS` | `25` | Max tool calls per user turn |
 | `MAX_AUTO_FIX` | `3` | Auto-fix retry attempts |
+
+---
+
+## Also in This Repo
+
+### `src/` — Alternative refactored structure
+
+The `src/` directory contains a cleaner, class-based rewrite of the same agent:
+
+- `src/core/agent.py` — `AgentLoop` class (transport-agnostic, could be used by CLI or API)
+- `src/core/settings.py` — Pydantic-based settings (replaces `config.py`)
+- `src/tools/` — Tool implementations (same as `functions/` but with a `ToolRegistry`)
+- `src/cli/` — CLI display layer (same as `ui/`)
+
+This structure was a refactoring exercise and is kept as a reference for comparing code architectures.
+
+### `Landing-Page/` — Separate Next.js landing page
+
+A standalone Next.js project with a cream/coral editorial design system. Not related to the agent.
+
+---
 
 ## Security
 
-CodeCrafter executes code on your local machine with these safeguards:
+CodeCrafter runs code on your machine with:
 
-- **Workspace Confinement** — File operations are restricted to the `/workspace` directory with path traversal protection
-- **Command Blocklist** — Destructive patterns (`rm -rf /`, `mkfs`, etc.) and access to sensitive paths are blocked
+- **Workspace confinement** — all file operations restricted to `workspace/` with path traversal protection
+- **Command blocklist** — `rm -rf /`, `mkfs`, `shutdown`, and other destructive patterns are blocked
 
-> **Disclaimer**: Always review the code the agent writes before executing shell commands in production environments.
+> **Heads up:** Always review shell commands the agent writes before running in production.
 
-## Contributing
-
-Contributions are welcome! Fork the repository, create a feature branch, and submit a pull request.
+---
 
 ## License
 
-This project is open-sourced under the [MIT License](LICENSE).
+[MIT](LICENSE)

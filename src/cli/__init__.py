@@ -1,6 +1,6 @@
 """CLI-specific UI code: display formatting, spinner, ANSI colors.
 
-Nothing here should be imported by the API layer (src/api/).
+The CLI layer imports from core but core never imports from here.
 """
 
 from src.cli.display import (

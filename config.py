@@ -14,31 +14,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Directory Configuration
 # =============================================================================
 
-# Working directory - defaults to current directory (like Claude Code)
+# Working directory - defaults to the sandboxed workspace/
 # Override via CODECRAFTER_WORKING_DIR env var or --path CLI flag
-WORKING_DIR = os.environ.get("CODECRAFTER_WORKING_DIR") or os.getcwd()
-
-# Session storage (outside workspace so it doesn't pollute user files)
-SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
-
-# =============================================================================
-# Session Configuration
-# =============================================================================
-
-# Maximum messages to keep in session history
-MAX_SESSION_MESSAGES = 30
-
-# Session file extension
-SESSION_FILE_EXTENSION = ".json"
-
-# Corrupted session backup extension
-CORRUPT_EXTENSION = ".corrupt"
-
-# Session filename prefix
-SESSION_PREFIX = "session_"
-
-# Session filename datetime format
-SESSION_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
+WORKING_DIR = os.environ.get("CODECRAFTER_WORKING_DIR") or os.path.join(BASE_DIR, "workspace")
 
 # =============================================================================
 # Model Configuration (Ollama Cloud)
@@ -48,12 +26,11 @@ SESSION_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
 OLLAMA_BASE_URL = "http://localhost:11434/v1"
 
 # Default model
-DEFAULT_MODEL = "qwen3-coder-next:cloud "
+DEFAULT_MODEL = "gpt-oss:120b-cloud"
 
 # Available models for --model flag shortcuts
 MODELS = {
-    "openai": "gpt-oss:120b-cloud  ",
-    "qwen3-coder": "qwen3-coder-next:cloud",
+    "gpt-oss": "gpt-oss:120b-cloud",
     "nemotron-super": "nemotron-3-super:cloud",
 }
 
@@ -61,9 +38,8 @@ MODELS = {
 # When the active model fails, CodeCrafter tries the next one automatically.
 # All models must support tool/function calling.
 FALLBACK_MODELS = [
-    "gpt-oss:120b-cloud",              # Primary: strong all-rounder with tool + vision + thinking
-    "qwen3-coder-next:cloud",     # Coding-focused, agentic workflows
-    "nemotron-3-super:cloud",     # NVIDIA 120B MoE, strong reasoning
+    "gpt-oss:120b-cloud",
+    "nemotron-3-super:cloud",
 ]
 
 # Token limits

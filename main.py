@@ -3,14 +3,14 @@
 CodeCrafter - AI-powered coding assistant with multi-language execution.
 
 A modular coding agent that provides:
-- Interactive AI chat powered by Ollama (with optional API server)
+- Interactive AI chat powered by Ollama
 - File operations (read, write, edit, delete)
 - Code execution in 15+ languages
 - Session management with persistent history
 - Workspace-aware context
 
 Usage:
-    python main.py [--verbose] [--model MODEL_NAME] [--path WORKING_DIR] [--api-key API_KEY]
+    python main.py [--verbose] [--model MODEL_NAME] [--path WORKING_DIR]
 """
 
 # Fix Windows Unicode encoding issues
@@ -32,9 +32,6 @@ if sys.platform == "win32":
 import json
 import os
 import re
-
-# Session modules
-from chat_session import SessionManager, delete_session_file, list_sessions
 
 # Configuration
 from config import (
@@ -204,7 +201,6 @@ def parse_args():
     # Parse --model flag
     selected_model = DEFAULT_MODEL
     working_dir = None
-    api_key = None
 
     i = 0
     while i < len(args):
@@ -216,13 +212,10 @@ def parse_args():
         elif arg == "--path" and i + 1 < len(args):
             working_dir = os.path.abspath(args[i + 1])
             i += 2
-        elif arg == "--api-key" and i + 1 < len(args):
-            api_key = args[i + 1]
-            i += 2
         else:
             i += 1
 
-    return verbose, selected_model, working_dir, api_key
+    return verbose, selected_model, working_dir
 
 
 # =============================================================================
@@ -235,7 +228,7 @@ def main():
     import config as cfg
 
     # Parse CLI flags
-    verbose_mode, selected_model, working_dir, api_key = parse_args()
+    verbose_mode, selected_model, working_dir = parse_args()
 
     # Override WORKING_DIR if --path was given
     if working_dir:
@@ -243,43 +236,33 @@ def main():
 
     WDIR = cfg.WORKING_DIR
 
-    # Initialize inference client (API-first, falls back to direct Ollama)
-    client = InferenceClient(primary_model=selected_model, api_key=api_key)
+    # Initialize inference client (direct Ollama connection)
+    client = InferenceClient(primary_model=selected_model)
 
-    # Show API status in verbose mode
+    # Show backend info in verbose mode
     if verbose_mode:
-        using_api = client.is_api_available()
-        if using_api:
-            print(
-                f"  {dim(Icons.ARROW)}  {dim('Backend:')} {c('CodeCrafter API', Colors.GREEN)} ({client.api_url})"
-            )
-        else:
-            fallback_info = (
-                f" + {client.model_count() - 1} fallback(s)" if client.model_count() > 1 else ""
-            )
-            print(
-                f"  {dim(Icons.ARROW)}  {dim('Backend:')} {c('Ollama', Colors.CYAN)} (direct){dim(fallback_info)}"
-            )
-
-    # Initialize session manager
-    session_mgr = SessionManager()
+        fallback_info = (
+            f" + {client.model_count() - 1} fallback(s)" if client.model_count() > 1 else ""
+        )
+        print(
+            f"  {dim(Icons.ARROW)}  {dim('Backend:')} {c('Ollama', Colors.CYAN)} (direct){dim(fallback_info)}"
+        )
 
     # Get user's name
     user_name = get_user_name()
 
     # Show intro
-    show_intro_banner(user_name, session_mgr.current_session_name, client.active_model)
+    show_intro_banner(user_name, client.active_model)
 
     # Show verbose config
     if verbose_mode:
         show_verbose_config(WDIR, True)
 
-    # Show restored message
-    if session_mgr.messages and verbose_mode:
-        print(f"  {dim(Icons.INFO)}  Restored {len(session_mgr.messages)} messages from session")
-
     # Tool schemas
     available_tools = get_available_tools()
+
+    # Conversation history for the agent
+    messages: list[dict] = []
 
     # =============================================================================
     # Main Agent Loop
@@ -293,14 +276,12 @@ def main():
             )
         except EOFError:
             print()
-            session_mgr.save()
-            show_warning("Input stream closed. Session saved.")
+            show_warning("Input stream closed.")
             show_exit_banner(user_name)
             break
         except KeyboardInterrupt:
             print()
-            session_mgr.save()
-            show_warning("Interrupted by user. Session saved.")
+            show_warning("Interrupted by user.")
             show_exit_banner(user_name)
             break
 
@@ -315,7 +296,6 @@ def main():
         cmd_lower = user_prompt.strip().lower()
 
         if cmd_lower in ["e", "q", "exit", "quit"]:
-            session_mgr.save()
             show_exit_banner(user_name)
             break
 
@@ -323,69 +303,13 @@ def main():
             show_help()
             continue
 
-        if cmd_lower == "sessions":
-            sessions = list_sessions()
-            if not sessions:
-                print(f"  {dim(Icons.BULLET)}  No saved sessions")
-                continue
-            print()
-            print(f"  {c(Icons.BRAIN, Colors.CYAN)}  {c('Saved Sessions', Colors.BOLD)}")
-            separator = "\u2500" * 52
-            print(f"  {dim(separator)}")
-            for i, s in enumerate(sessions):
-                marker = c(Icons.ARROW, Colors.CYAN) if i == 0 else " "
-                s_name = s["name"]
-                s_mod = s["modified"]
-                s_msgs = s["messages"]
-                info_line = str(s_mod) + "  |  " + str(s_msgs) + " msgs"
-                print(f"  {marker}  {c(s_name, Colors.CYAN)}  {dim(info_line)}")
-            print()
-            continue
+        # Trim history if it's getting too long (keep system prompt + N most recent turns)
+        if len(messages) > CONTEXT_TRIM_THRESHOLD * 3:
+            # Keep only the last CONTEXT_TRIM_THRESHOLD exchanges (each exchange = user + assistant)
+            messages = messages[-(CONTEXT_TRIM_THRESHOLD * 2):]
 
-        if cmd_lower == "session new":
-            new_name = session_mgr.new_session()
-            scan_workspace_tree(WDIR)  # refresh for next prompt
-            print(f"  {c(Icons.SUCCESS, Colors.GREEN)}  New session: {c(new_name, Colors.CYAN)}")
-            continue
-
-        if cmd_lower.startswith("session load "):
-            target = user_prompt.strip()[len("session load ") :].strip()
-            if not target:
-                show_error("Usage: session load <name>")
-                continue
-            try:
-                name, msg_count = session_mgr.load(target)
-                scan_workspace_tree(WDIR)  # refresh for next prompt
-                print(
-                    f"  {c(Icons.SUCCESS, Colors.GREEN)}  Loaded session: {c(name, Colors.CYAN)} ({msg_count} messages)"
-                )
-            except Exception as e:
-                show_error(f"Failed to load session: {e}")
-            continue
-
-        if cmd_lower.startswith("session delete "):
-            target = user_prompt.strip()[len("session delete ") :].strip()
-            if not target:
-                show_error("Usage: session delete <name>")
-                continue
-            if target == session_mgr.current_session_name:
-                show_error("Cannot delete the active session. Switch first.")
-                continue
-            if delete_session_file(target):
-                print(
-                    f"  {c(Icons.SUCCESS, Colors.GREEN)}  Deleted session: {c(target, Colors.CYAN)}"
-                )
-            else:
-                show_error(f"Session '{target}' not found.")
-            continue
-
-        if cmd_lower == "clear":
-            session_mgr.clear()
-            print(f"  {dim(Icons.INFO)}  Session cleared")
-            continue
-
-        # Add user message
-        session_mgr.add_message("user", user_prompt)
+        # Add user message to conversation history
+        messages.append({"role": "user", "content": user_prompt})
 
         # Agentic Loop
         system_prompt = build_system_prompt(WDIR)
@@ -405,8 +329,7 @@ def main():
             try:
                 response = client.chat_completion(
                     model=active_model,
-                    messages=[{"role": "system", "content": system_prompt}]
-                    + session_mgr.get_messages(),
+                    messages=[{"role": "system", "content": system_prompt}] + messages,
                     tools=available_tools,
                     tool_choice="auto",
                     max_tokens=MAX_TOKENS,
@@ -428,18 +351,13 @@ def main():
                         active_model = new_model
                         continue
 
-                # Context too large — trim and retry
-                if "400" in error_str and len(session_mgr.messages) > CONTEXT_TRIM_THRESHOLD:
-                    session_mgr.trim_messages()
-                    continue
-
                 # Connection error (Ollama not running)
                 if "connection" in error_str.lower() or "refused" in error_str.lower():
                     show_error("Cannot connect to Ollama. Make sure it is running: ollama serve")
                 else:
                     show_error(f"All models failed: {e}")
 
-                session_mgr.messages.pop()
+                messages.pop()
                 break
 
             spinner.stop()
@@ -471,7 +389,7 @@ def main():
                     }
                     for tc in assistant_message.tool_calls
                 ]
-            session_mgr.add_message(**msg_to_append)
+            messages.append(msg_to_append)
 
             # Handle tool calls
             if assistant_message.tool_calls:
@@ -510,11 +428,11 @@ def main():
                     result_str = (
                         json.dumps(result) if isinstance(result, (dict, list)) else str(result)
                     )
-                    session_mgr.add_message(
-                        role="tool",
-                        tool_call_id=tc.id,
-                        content=result_str,
-                    )
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": result_str,
+                    })
 
                     # Refresh workspace after file-mutating operations
                     if func_name in FILE_MUTATING_TOOLS:
@@ -526,23 +444,23 @@ def main():
                             auto_fix_count += 1
                             if not verbose_mode:
                                 show_auto_fix(auto_fix_count, MAX_AUTO_FIX)
-                            session_mgr.add_message(
-                                role="user",
-                                content=(
+                            messages.append({
+                                "role": "user",
+                                "content": (
                                     "The code produced an error. Read the error carefully and fix it:\n"
                                     "- If it's a missing module/package error, install the dependency using run_command "
                                     "(e.g. 'pip install package_name' or 'npm install package_name').\n"
                                     "- If it's a code error, fix it using edit_file.\n"
                                     "Then run the code again."
                                 ),
-                            )
+                            })
 
             # Empty response after stripping
             elif not assistant_content:
-                session_mgr.add_message(
-                    role="user",
-                    content="Please respond using one of your available tools, or give a text answer.",
-                )
+                messages.append({
+                    "role": "user",
+                    "content": "Please respond using one of your available tools, or give a text answer.",
+                })
                 continue
 
             # Final text output
@@ -551,10 +469,10 @@ def main():
 
                 # Code-block detection
                 if "```" in content and step < MAX_AGENT_STEPS - 2:
-                    session_mgr.add_message(
-                        role="user",
-                        content="Do NOT paste code in your response. Use the write_file tool to create files instead. Create the files now using write_file.",
-                    )
+                    messages.append({
+                        "role": "user",
+                        "content": "Do NOT paste code in your response. Use the write_file tool to create files instead. Create the files now using write_file.",
+                    })
                     spinner.stop()
                     continue
 
@@ -568,13 +486,12 @@ def main():
                         f"  {dim(Icons.TOKENS)}  {dim(f'{usage.prompt_tokens:,} in | {usage.completion_tokens:,} out | {total:,} total')}"
                     )
 
-                session_mgr.save()
                 break
 
             # Check for max steps
             if step == MAX_AGENT_STEPS - 1:
                 show_warning(f"CodeCrafter reached max steps ({step + 1}). Resetting...")
-                session_mgr.clear()
+                messages.clear()
                 break
 
             # Show usage in verbose mode

@@ -1,5 +1,6 @@
 import subprocess
 import re
+import os
 
 
 BLOCKED_PATTERNS = [
@@ -19,6 +20,8 @@ BLOCKED_PATTERNS = [
     r"chown\s+.*\s+/",
     r"cat\s+.*(\.ssh|\.gnupg|credentials|shadow|passwd)",
     r"type\s+.*\\(\.ssh|credentials)",
+    r"(?:^|[;&|])\s*cd\s+\.\.",
+    r"(?:^|[;&|])\s*pushd\s+\.\.",
 ]
 
 BLOCKED_REGEX = [re.compile(p, re.IGNORECASE) for p in BLOCKED_PATTERNS]
@@ -35,6 +38,14 @@ def run_command(working_directory, command, timeout=30):
     """
     Executes a shell command in the working directory.
     """
+    # Security: validate working directory exists and is accessible
+    if not working_directory:
+        return "Error: Working directory is not set"
+    wd_abs = os.path.realpath(working_directory)
+    if not os.path.isdir(wd_abs):
+        return f'Error: Working directory does not exist: "{working_directory}"'
+
+    # Security: block dangerous commands
     if _is_command_blocked(command):
         return "Error: This command has been blocked for safety reasons. It matches a dangerous pattern."
 
@@ -42,7 +53,7 @@ def run_command(working_directory, command, timeout=30):
         result = subprocess.run(
             command,
             shell=True,
-            cwd=working_directory,
+            cwd=wd_abs,
             capture_output=True,
             text=True,
             timeout=timeout,

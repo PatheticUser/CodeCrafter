@@ -1,8 +1,10 @@
 import subprocess
 import re
+import os
 
 
 # Dangerous command patterns — block these to prevent destructive operations
+# and path traversal outside the workspace
 BLOCKED_PATTERNS = [
     # Filesystem destruction
     r"rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?/",  # rm -rf / or rm /
@@ -24,6 +26,9 @@ BLOCKED_PATTERNS = [
     # Credential/key theft
     r"cat\s+.*(\.ssh|\.gnupg|credentials|shadow|passwd)",
     r"type\s+.*\\(\.ssh|credentials)",
+    # Path traversal — reading/writing outside working directory via ..
+    r"(?:^|[;&|])\s*cd\s+\.\.",  # cd .. to escape
+    r"(?:^|[;&|])\s*pushd\s+\.\.",  # pushd .. to escape
 ]
 
 BLOCKED_REGEX = [re.compile(p, re.IGNORECASE) for p in BLOCKED_PATTERNS]
@@ -49,6 +54,13 @@ def run_command(working_directory, command, timeout=30):
     Returns:
         String with stdout, stderr, and exit code
     """
+    # Security: validate working directory exists and is accessible
+    if not working_directory:
+        return "Error: Working directory is not set"
+    wd_abs = os.path.realpath(working_directory)
+    if not os.path.isdir(wd_abs):
+        return f'Error: Working directory does not exist: "{working_directory}"'
+
     # Security: block dangerous commands
     if _is_command_blocked(command):
         return "Error: This command has been blocked for safety reasons. It matches a dangerous pattern."
@@ -57,7 +69,7 @@ def run_command(working_directory, command, timeout=30):
         result = subprocess.run(
             command,
             shell=True,
-            cwd=working_directory,
+            cwd=wd_abs,
             capture_output=True,
             text=True,
             timeout=timeout,

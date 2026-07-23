@@ -53,19 +53,17 @@ class Settings(BaseSettings):
     # ── Ollama / LLM Configuration ────────────────────────────────────────
 
     OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
-    DEFAULT_MODEL: str = "qwen3.5:cloud"
+    DEFAULT_MODEL: str = "gpt-oss:120b-cloud"
 
     # Model shortcut aliases for --model flag
     MODELS: dict[str, str] = {
-        "qwen3.5": "qwen3.5:cloud",
-        "qwen3-coder": "qwen3-coder-next:cloud",
+        "gpt-oss": "gpt-oss:120b-cloud",
         "nemotron-super": "nemotron-3-super:cloud",
     }
 
     # Fallback chain — ordered by preference. All must support tool calling.
     FALLBACK_MODELS: list[str] = [
-        "qwen3.5:cloud",
-        "qwen3-coder-next:cloud",
+        "gpt-oss:120b-cloud",
         "nemotron-3-super:cloud",
     ]
 
@@ -81,14 +79,6 @@ class Settings(BaseSettings):
     MAX_AGENT_STEPS: int = 25
     MAX_AUTO_FIX: int = 3
     CONTEXT_TRIM_THRESHOLD: int = 6
-
-    # ── Session Configuration ─────────────────────────────────────────────
-
-    MAX_SESSION_MESSAGES: int = 30
-    SESSION_FILE_EXTENSION: str = ".json"
-    CORRUPT_EXTENSION: str = ".corrupt"
-    SESSION_PREFIX: str = "session_"
-    SESSION_TIMESTAMP_FORMAT: str = "%Y-%m-%d_%H-%M-%S"
 
     # ── UI Configuration ──────────────────────────────────────────────────
 

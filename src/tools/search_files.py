@@ -9,13 +9,12 @@ def search_files(
     Search through workspace files for a text pattern. Returns matching lines
     with file paths and line numbers, capped at 50 results.
     """
-    working_dir_abs = os.path.abspath(working_directory)
-    search_dir = os.path.abspath(os.path.join(working_directory, directory))
+    err = validate_directory(working_directory, directory)
+    if err:
+        return err
 
-    if not (
-        search_dir == working_dir_abs or search_dir.startswith(working_dir_abs + os.sep)
-    ):
-        return f'Error: Cannot search "{directory}" \u2014 outside the permitted working directory'
+    working_dir_abs = os.path.realpath(working_directory)
+    search_dir = os.path.realpath(os.path.join(working_directory, directory))
 
     if not os.path.isdir(search_dir):
         return f'Error: Directory not found: "{directory}"'

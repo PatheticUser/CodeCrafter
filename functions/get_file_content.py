@@ -1,5 +1,7 @@
 import os
 
+from functions._security import validate_path
+
 
 def get_file_content(working_directory, file_path, start_line=None, end_line=None):
     """
@@ -15,16 +17,12 @@ def get_file_content(working_directory, file_path, start_line=None, end_line=Non
     Returns:
         File contents (possibly with range info) or error string
     """
-    # Normalize paths
-    working_directory_abs = os.path.abspath(working_directory)
-    target_file_abs = os.path.abspath(os.path.join(working_directory, file_path))
+    # Security: path traversal check
+    err = validate_path(working_directory, file_path)
+    if err:
+        return err
 
-    # 1. Validate scope
-    if not (
-        target_file_abs == working_directory_abs
-        or target_file_abs.startswith(working_directory_abs + os.sep)
-    ):
-        return f'Error: Cannot read "{file_path}" as it is outside the permitted working directory'
+    target_file_abs = os.path.realpath(os.path.join(working_directory, file_path))
 
     # 2. Validate file exists
     if not os.path.isfile(target_file_abs):

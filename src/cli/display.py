@@ -137,19 +137,19 @@ def _strip_markdown(text: str) -> str:
 # ── Banner Functions ──────────────────────────────────────────────────────
 
 
-def show_intro_banner(user_name: str, session_name: str = "", model_name: str = ""):
+def show_intro_banner(user_name: str, model_name: str = ""):
     """Display the intro banner."""
     clear_screen()
     print()
     print(
         f"  {c(Icons.AGENT, Colors.CYAN)}  {c(settings.AGENT_NAME, Colors.BOLD)}  {dim('v' + settings.APP_VERSION)}"
     )
-    print(f"  {dim('\u2500' * settings.BANNER_WIDTH)}")
+    divider = '\u2500' * settings.BANNER_WIDTH
+    sep = '\u2502'
+    print(f"  {dim(divider)}")
     print(
-        f"  {dim(Icons.GEAR)}  Model: {c(model_name, Colors.CYAN)}  {dim('\u2502')}  Mode: {c('Interactive', Colors.GREEN)}"
+        f"  {dim(Icons.GEAR)}  Model: {c(model_name, Colors.CYAN)}  {dim(sep)}  Mode: {c('Interactive', Colors.GREEN)}"
     )
-    if session_name:
-        print(f"  {dim(Icons.BRAIN)}  Session: {c(session_name, Colors.CYAN)}")
     print(
         f"  {dim(Icons.INFO)}  Type {c('help', Colors.YELLOW)} for commands, {c('exit', Colors.YELLOW)} to close"
     )
@@ -163,12 +163,13 @@ def show_intro_banner(user_name: str, session_name: str = "", model_name: str = 
 def show_exit_banner(user_name: str):
     """Display the exit banner."""
     print()
-    print(f"  {dim('\u2500' * settings.BANNER_WIDTH)}")
+    line = dim('\u2500' * settings.BANNER_WIDTH)
+    print(f"  {line}")
     print(f"  {c(Icons.STOP, Colors.RED)}  {c('Session Ended', Colors.BOLD)}")
     print(
         f"  {dim(Icons.INFO)}  See you soon, {c(user_name, Colors.MAGENTA)} {c('<3', Colors.MAGENTA)}"
     )
-    print(f"  {dim('\u2500' * settings.BANNER_WIDTH)}")
+    print(f"  {line}")
     print()
 
 
@@ -179,9 +180,11 @@ def show_verbose_config(working_dir: str, auto_update: bool):
     """Display verbose configuration."""
     print()
     print(f"  {c(Icons.DEBUG, Colors.YELLOW)}  {c('Verbose Mode', Colors.BOLD)}")
-    print(f"  {dim('  \u251c\u2500')}  Working Dir: {c(working_dir, Colors.CYAN)}")
+    branch1 = dim('  \u251c\u2500')
+    branch2 = dim('  \u2514\u2500')
+    print(f"  {branch1}  Working Dir: {c(working_dir, Colors.CYAN)}")
     print(
-        f"  {dim('  \u2514\u2500')}  Auto-update: {c(str(auto_update), Colors.GREEN if auto_update else Colors.RED)}"
+        f"  {branch2}  Auto-update: {c(str(auto_update), Colors.GREEN if auto_update else Colors.RED)}"
     )
 
 
@@ -198,8 +201,9 @@ def show_verbose_function(func_name: str, func_args: dict):
     args_display = str(func_args)
     if len(args_display) > 60:
         args_display = args_display[:60] + "..."
+    branch = dim('  \u251c\u2500')
     print(
-        f"  {dim('  \u251c\u2500')}  {Icons.CODE}  {c(func_name, Colors.MAGENTA)}({dim(args_display)})"
+        f"  {branch}  {Icons.CODE}  {c(func_name, Colors.MAGENTA)}({dim(args_display)})"
     )
 
 
@@ -213,14 +217,17 @@ def show_verbose_result(result: str, is_error: bool = False):
     if len(lines) > settings.VERBOSE_MAX_LINES:
         truncated = "\n".join(lines[:settings.VERBOSE_MAX_LINES]) + "\n..."
 
-    print(f"  {dim('  \u2514\u2500')}  {c(icon, color)}  {dim(truncated.replace(chr(10), ' '))}")
+    branch = dim('  \u2514\u2500')
+    cleaned_res = dim(truncated.replace('\n', ' '))
+    print(f"  {branch}  {c(icon, color)}  {cleaned_res}")
 
 
 def show_verbose_tokens(prompt: int, response: int):
     """Display verbose token usage."""
     total = prompt + response
+    token_str = f"tokens: {prompt:,} in \u2502 {response:,} out \u2502 {total:,} total"
     print(
-        f"     {c(Icons.TOKENS, Colors.DIM)}  {dim(f'tokens: {prompt:,} in \u2502 {response:,} out \u2502 {total:,} total')}"
+        f"     {c(Icons.TOKENS, Colors.DIM)}  {dim(token_str)}"
     )
 
 
@@ -332,15 +339,11 @@ def show_help():
     """Display available commands."""
     print()
     print(f"  {c(Icons.INFO, Colors.CYAN)}  {c('Commands', Colors.BOLD)}")
-    print(f"  {dim('\u2500' * settings.BANNER_WIDTH)}")
-    cmds = [
+    line = dim('\u2500' * settings.BANNER_WIDTH)
+    print(f"  {line}")
+    cmds =    [
         ("help", "Show this help message"),
-        ("sessions", "List all saved sessions"),
-        ("session new", "Start a new session"),
-        ("session load <name>", "Load a specific session"),
-        ("session delete <name>", "Delete a session"),
-        ("clear", "Clear current session history"),
-        ("exit / quit", "Save session and exit"),
+        ("exit / quit", "Exit"),
     ]
     for cmd, desc in cmds:
         print(f"  {c(cmd, Colors.YELLOW):<30s}  {dim(desc)}")
@@ -352,7 +355,8 @@ def get_user_name() -> str:
     clear_screen()
     print()
     print(f"  {c(Icons.AGENT, Colors.CYAN)}  {c(settings.AGENT_NAME, Colors.BOLD)}")
-    print(f"  {dim('\u2500' * settings.BANNER_WIDTH)}")
+    line = dim('\u2500' * settings.BANNER_WIDTH)
+    print(f"  {line}")
     print(f"  {dim(Icons.INFO)}  Project-aware AI coding assistant")
     print()
     try:

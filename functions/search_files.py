@@ -1,6 +1,8 @@
 import os
 import re
 
+from functions._security import validate_directory
+
 
 def search_files(
     working_directory, pattern, directory=".", file_extension=None, case_sensitive=False
@@ -19,14 +21,13 @@ def search_files(
     Returns:
         Formatted string of matches, or error message
     """
-    # --- Security: path traversal check ---
-    working_dir_abs = os.path.abspath(working_directory)
-    search_dir = os.path.abspath(os.path.join(working_directory, directory))
+    # Security: path traversal check
+    err = validate_directory(working_directory, directory)
+    if err:
+        return err
 
-    if not (
-        search_dir == working_dir_abs or search_dir.startswith(working_dir_abs + os.sep)
-    ):
-        return f'Error: Cannot search "{directory}" — outside the permitted working directory'
+    working_dir_abs = os.path.realpath(working_directory)
+    search_dir = os.path.realpath(os.path.join(working_directory, directory))
 
     if not os.path.isdir(search_dir):
         return f'Error: Directory not found: "{directory}"'

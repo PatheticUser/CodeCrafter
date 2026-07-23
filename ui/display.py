@@ -114,15 +114,14 @@ def clear_screen():
 
 # ── Intro banner (minimal, Claude Code-inspired) ────────────────────────
 
-def show_intro_banner(user_name: str, session_name: str = "", model_name: str = ""):
-    """Minimal startup banner."""
+def show_intro_banner(user_name: str, model_name: str = ""):
+    """Startup banner."""
     clear_screen()
     print()
     print(f"  {c(AGENT_NAME, Colors.CYAN)}{bold(f' v{VERSION}')}  {dim(Icons.DIVIDER)}  {dim('AI coding assistant')}")
     print(f"  {dim(Icons.DIVIDER * 48)}")
-    print(f"  {c(Icons.BULLET, Colors.DIM)}  {dim('Model:')} {c(model_name, Colors.CYAN)}  {dim('Session:')} {c(session_name, Colors.MAGENTA)}")
-    if model_name:
-        print(f"  {dim(Icons.BULLET)}  {dim('Type')} {c('help', Colors.YELLOW)} {dim('for commands —')} {c('exit', Colors.YELLOW)} {dim('to quit')}")
+    print(f"  {c(Icons.BULLET, Colors.DIM)}  {dim('Model:')} {c(model_name, Colors.CYAN)}")
+    print(f"  {dim(Icons.BULLET)}  {dim('Type')} {c('help', Colors.YELLOW)} {dim('for commands —')} {c('exit', Colors.YELLOW)} {dim('to quit')}")
     print()
     print(f"  {c(Icons.SUCCESS, Colors.GREEN)}  {bold('Hello')}, {c(user_name, Colors.MAGENTA)} — ready when you are")
     print()
@@ -134,7 +133,7 @@ def show_exit_banner(user_name: str):
     """Minimal exit message."""
     print()
     print(f"  {dim(Icons.DIVIDER * 48)}")
-    print(f"  {c(Icons.STOP, Colors.RED)}  {bold('Session ended')}  {dim(Icons.BULLET)}  {dim('See you,')} {c(user_name, Colors.MAGENTA)}")
+    print(f"  {c(Icons.STOP, Colors.RED)}  {bold('Goodbye')}  {dim(Icons.BULLET)}  {dim('See you,')} {c(user_name, Colors.MAGENTA)}")
     print(f"  {dim(Icons.DIVIDER * 48)}")
     print()
 
@@ -302,14 +301,9 @@ def show_help():
     width = min(terminal_width(), 72)
     print()
     print(f"  {c('Commands', Colors.BOLD)}  {dim(Icons.DIVIDER * (width - 14))}")
-    cmds = [
+    cmds =    [
         ("help", "Show this help"),
-        ("sessions", "List saved sessions"),
-        ("session new", "Start a new session"),
-        ("session load <name>", "Load a session"),
-        ("session delete <name>", "Delete a session"),
-        ("clear", "Clear current history"),
-        ("exit / quit", "Save and exit"),
+        ("exit / quit", "Exit"),
     ]
     for cmd, desc in cmds:
         print(f"  {c(cmd, Colors.YELLOW):<30s}  {dim(desc)}")

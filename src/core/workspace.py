@@ -10,9 +10,16 @@ def scan_workspace_tree(directory=None):
     if directory is None:
         directory = str(settings.workspace_dir)
 
+    # Directories to skip — junk or build artifacts that bloat the tree
+    SKIP_DIRS = {
+        "node_modules", "__pycache__", ".venv", "venv", ".git",
+        "dist", "build", ".next", "out", "target",
+        ".mypy_cache", ".pytest_cache", ".ruff_cache",
+    }
+
     lines = []
     for root, dirs, files in os.walk(directory):
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS]
         level = os.path.relpath(root, directory)
         if level == ".":
             for f in sorted(files):

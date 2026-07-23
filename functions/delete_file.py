@@ -1,5 +1,7 @@
 import os
 
+from functions._security import validate_path
+
 
 def delete_file(working_directory, file_path):
     """
@@ -8,16 +10,10 @@ def delete_file(working_directory, file_path):
     Returns a status message indicating success or failure.
     """
 
-    # Normalize paths
-    working_directory_abs = os.path.abspath(working_directory)
-    target_file_abs = os.path.abspath(os.path.join(working_directory, file_path))
-
-    # 1. Security check – prevent path traversal (os.sep prevents edge cases)
-    if not (
-        target_file_abs == working_directory_abs
-        or target_file_abs.startswith(working_directory_abs + os.sep)
-    ):
-        return f'Error: Cannot delete "{file_path}" as it is outside the permitted working directory.'
+    # Security: path traversal check
+    err = validate_path(working_directory, file_path)
+    if err:
+        return err
 
     # 2. Check existence
     if not os.path.exists(target_file_abs):

@@ -6,14 +6,11 @@ def edit_file(working_directory, file_path, old_content, new_content):
     Surgical file editing: finds exact `old_content` in the file and replaces it
     with `new_content`. Does NOT overwrite the entire file.
     """
-    working_dir_abs = os.path.abspath(working_directory)
-    target_file_abs = os.path.abspath(os.path.join(working_directory, file_path))
+    err = validate_path(working_directory, file_path)
+    if err:
+        return err
 
-    if not (
-        target_file_abs == working_dir_abs
-        or target_file_abs.startswith(working_dir_abs + os.sep)
-    ):
-        return f'Error: Cannot edit "{file_path}" \u2014 outside the permitted working directory'
+    target_file_abs = os.path.realpath(os.path.join(working_directory, file_path))
 
     if not os.path.isfile(target_file_abs):
         return f'Error: File not found: "{file_path}"'
