@@ -9,9 +9,7 @@ from __future__ import annotations
 import os
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar
 
-from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -79,6 +77,7 @@ class Settings(BaseSettings):
     MAX_AGENT_STEPS: int = 25
     MAX_AUTO_FIX: int = 3
     CONTEXT_TRIM_THRESHOLD: int = 6
+    MAX_TREE_ITEMS: int = 50  # Workspace tree display cap
 
     # ── UI Configuration ──────────────────────────────────────────────────
 

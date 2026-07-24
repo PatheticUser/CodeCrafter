@@ -55,8 +55,11 @@ MAX_AGENT_STEPS = 25
 # Maximum auto-fix attempts per user turn
 MAX_AUTO_FIX = 3
 
-# Context trimming threshold (number of messages before trimming)
+# Context trimming threshold (exchanges to keep in history)
 CONTEXT_TRIM_THRESHOLD = 6
+
+# Maximum items in workspace tree display (prevents context overflow)
+MAX_TREE_ITEMS = 50
 
 # =============================================================================
 # UI Configuration

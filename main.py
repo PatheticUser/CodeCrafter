@@ -72,11 +72,14 @@ from ui import (
     show_action,
     show_agent_response,
     show_auto_fix,
+    show_diff,
     show_error,
     show_exit_banner,
     show_function_call,
     show_help,
     show_intro_banner,
+    show_model_switch,
+    show_token_usage,
     show_verbose_config,
     show_verbose_function,
     show_verbose_result,
@@ -92,33 +95,28 @@ from ui import (
 
 
 def build_system_prompt(working_dir: str):
-    """Build the system prompt with current workspace state."""
+    """Build a token-efficient system prompt."""
     tree = scan_workspace_tree(working_dir)
-    return f"""You are CodeCrafter, an AI coding assistant running in a local terminal environment.
+    return f"""You are CodeCrafter, a terminal-based AI coding assistant.
 
-CRITICAL: You are running inside a terminal. All your text responses must be PLAIN TEXT.
-Do not use any markdown formatting whatsoever. No bold (**), no italic (*), no backticks (`), no headers (#), no horizontal rules (---), no bullet points (- or *), no numbered lists (1. 2. 3.), no code fences (```). Just write plain sentences.
-Keep responses concise (1-4 sentences for summaries). Only answer what was asked.
+OUTPUT: Plain text only. No markdown (no ** * ` # --- - 1. ```).
+Keep responses 1-4 sentences. Never paste code — use tools.
 
-Current workspace contents:
+WORKSPACE:
 {tree}
 
-TOOLS AVAILABLE:
-File: get_files_info, get_file_outline, get_file_content, write_file, edit_file, delete_file
-Execution: run_code (auto-detects language from extension), run_command (shell commands)
-Search: search_files (grep-like pattern search across files)
+TOOLS:
+- File: get_files_info | get_file_outline (structure) | get_file_content (read with line ranges) | write_file | edit_file (search+replace) | delete_file
+- Execute: run_code (auto-detect language) | run_command (shell)
+- Search: search_files (grep-like)
 
 RULES:
-1. ALWAYS USE TOOLS. Never paste code in your response. Use write_file to create files. Use edit_file to modify existing files.
-2. EDIT vs WRITE: For modifying existing files, ALWAYS use edit_file. Only use write_file for new files.
-3. Multi-file projects get their own folder. Single scripts stay at workspace root.
-4. OUTLINE BEFORE EDIT: On large files, use get_file_outline first, then get_file_content with line ranges, then edit_file.
-5. ALWAYS RUN CODE after creating executable files to verify it works.
-6. SELF-CORRECTION: If code fails, read the error, fix it (install deps with run_command if needed, fix code with edit_file), and run again. Max 3 retries.
-7. DEPENDENCIES: Install required packages before running (pip install, npm install, etc.).
-8. GUI APPS (pygame, tkinter, etc.) timeout with run_code. Use run_command with 'start python file.py' on Windows to launch detached.
-9. Paths must be RELATIVE to the working directory.
-10. Keep responses brief and plain text. Do not repeat code you just wrote.
+1. Always use tools — never paste code. write_file for new files, edit_file for changes.
+2. On large files, outline first → read ranges → edit.
+3. Run code after creating files to verify. If it fails, fix and retry (max 3).
+4. Install dependencies before running (pip install, npm install, etc.).
+5. Paths are relative to working directory.
+6. Multi-file projects go in subfolders; single files at root.
 """
 
 
@@ -252,7 +250,7 @@ def main():
     user_name = get_user_name()
 
     # Show intro
-    show_intro_banner(user_name, client.active_model)
+    show_intro_banner(user_name, client.active_model, fallback_count=client.model_count() - 1)
 
     # Show verbose config
     if verbose_mode:
@@ -303,9 +301,9 @@ def main():
             show_help()
             continue
 
-        # Trim history if it's getting too long (keep system prompt + N most recent turns)
-        if len(messages) > CONTEXT_TRIM_THRESHOLD * 3:
-            # Keep only the last CONTEXT_TRIM_THRESHOLD exchanges (each exchange = user + assistant)
+        # Trim conversation history: keep only last N exchanges (user+assistant pairs).
+        # This prevents context overflow in long sessions.
+        if len(messages) > CONTEXT_TRIM_THRESHOLD * 2:
             messages = messages[-(CONTEXT_TRIM_THRESHOLD * 2):]
 
         # Add user message to conversation history
@@ -343,11 +341,7 @@ def main():
                 if should_fallback(error_str):
                     new_model = client.fallback()
                     if new_model:
-                        print(
-                            f"  {c(Icons.INFO, Colors.DIM)}  "
-                            f"{c(active_model, Colors.DIM)} failed, switching to "
-                            f"{c(new_model, Colors.CYAN)}"
-                        )
+                        show_model_switch(active_model, new_model)
                         active_model = new_model
                         continue
 
@@ -420,14 +414,20 @@ def main():
                     # Show output
                     if not verbose_mode:
                         show_action(func_name, func_args, result)
+                        # Show diff for successful edits
+                        if func_name == "edit_file" and isinstance(result, dict) and "diff" in result:
+                            show_diff(result["diff"])
                     else:
                         is_error = "ERROR" in str(result) or "Error" in str(result)
                         show_verbose_result(str(result), is_error)
 
-                    # Send tool result back to model
-                    result_str = (
-                        json.dumps(result) if isinstance(result, (dict, list)) else str(result)
-                    )
+                    # Send tool result back to model (extract string from dict result)
+                    if isinstance(result, dict) and "result" in result:
+                        result_str = result["result"]
+                    else:
+                        result_str = (
+                            json.dumps(result) if isinstance(result, (dict, list)) else str(result)
+                        )
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tc.id,
@@ -480,11 +480,7 @@ def main():
 
                 # Show token usage
                 if response.usage:
-                    usage = response.usage
-                    total = usage.prompt_tokens + usage.completion_tokens
-                    print(
-                        f"  {dim(Icons.TOKENS)}  {dim(f'{usage.prompt_tokens:,} in | {usage.completion_tokens:,} out | {total:,} total')}"
-                    )
+                    show_token_usage(response.usage.prompt_tokens, response.usage.completion_tokens)
 
                 break
 

@@ -33,13 +33,13 @@ schema_delete_file = {
     "type": "function",
     "function": {
         "name": "delete_file",
-        "description": "Delete a file safely within the working directory.",
+        "description": "Delete a file. Only operates within workspace.",
         "parameters": {
             "type": "object",
             "properties": {
                 "file_path": {
                     "type": "string",
-                    "description": "The path of the file to delete, relative to the working directory.",
+                    "description": "File path relative to workspace.",
                 },
             },
             "required": ["file_path"],

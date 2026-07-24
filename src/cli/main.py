@@ -23,26 +23,28 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
-from src.core.settings import settings
-from src.core.api_manager import OllamaClient
-from src.core.agent import AgentLoop
 from src.cli.display import (
-    c, Colors, Icons, dim,
-    show_intro_banner,
-    show_exit_banner,
-    show_verbose_config,
-    show_help,
-    show_error,
-    show_warning,
-    show_action,
-    show_agent_response,
-    show_verbose_function,
-    show_verbose_result,
-    show_function_call,
+    Colors,
+    Icons,
+    c,
+    dim,
     get_user_name,
     reset_action_tracker,
+    show_action,
+    show_agent_response,
+    show_diff,
+    show_exit_banner,
+    show_function_call,
+    show_help,
+    show_intro_banner,
+    show_verbose_config,
+    show_verbose_function,
+    show_verbose_result,
+    show_warning,
 )
-
+from src.core.agent import AgentLoop
+from src.core.api_manager import OllamaClient
+from src.core.settings import settings
 
 
 def parse_args():
@@ -93,9 +95,9 @@ def main():
 
     while True:
         try:
-            user_prompt = input(
-                f"\n  {c(Icons.PROMPT, Colors.MAGENTA)} {c(user_name, Colors.BOLD)} {c('\u203a', Colors.CYAN)} "
-            )
+            arrow_char = "\u203a"
+            prompt = f"\n  {c(Icons.PROMPT, Colors.MAGENTA)} {c(user_name, Colors.BOLD)} {c(arrow_char, Colors.CYAN)} "
+            user_prompt = input(prompt)
         except EOFError:
             print()
             show_warning("Input stream closed.")
@@ -148,6 +150,9 @@ def main():
                         show_verbose_function(func_name, func_args)
                     else:
                         show_action(func_name, func_args, result)
+                        # Show diff for successful edits
+                        if func_name == "edit_file" and isinstance(result, dict) and "diff" in result:
+                            show_diff(result["diff"])
 
                     if verbose_mode:
                         is_error = "ERROR" in str(result) or "Error" in str(result)

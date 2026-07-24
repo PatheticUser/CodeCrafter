@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import Any, Generator, Optional
+from typing import Any
 
 from openai import OpenAI
 
@@ -25,7 +26,7 @@ class AgentResponse:
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     tool_results: list[dict[str, Any]] = field(default_factory=list)
     is_final: bool = False
-    token_usage: Optional[dict[str, int]] = None
+    token_usage: dict[str, int] | None = None
     active_model: str = ""
     step: int = 0
 
@@ -48,7 +49,7 @@ class AgentLoop:
         self,
         client: OpenAI,
         model: str = "",
-        tool_registry: Optional[ToolRegistry] = None,
+        tool_registry: ToolRegistry | None = None,
     ):
         self.client = client
         self.active_model = model or settings.DEFAULT_MODEL
@@ -240,35 +241,30 @@ class AgentLoop:
     # ── Private Helpers ───────────────────────────────────────────────────
 
     def _build_system_prompt(self, workspace_dir: str) -> str:
-        """Build the system prompt with current workspace state."""
+        """Build token-efficient system prompt with workspace state."""
         from src.core.workspace import scan_workspace_tree
 
         tree = scan_workspace_tree(workspace_dir)
-        return f"""You are CodeCrafter, an AI coding assistant running in a local terminal environment.
+        return f"""You are CodeCrafter, a terminal-based AI coding assistant.
 
-CRITICAL: You are running inside a terminal. All your text responses must be PLAIN TEXT.
-Do not use any markdown formatting whatsoever. No bold (**), no italic (*), no backticks (`), no headers (#), no horizontal rules (---), no bullet points (- or *), no numbered lists (1. 2. 3.), no code fences (```). Just write plain sentences.
-Keep responses concise (1-4 sentences for summaries). Only answer what was asked.
+OUTPUT: Plain text only. No markdown (** * ` # --- - 1. ```).
+Keep responses 1-4 sentences. Never paste code — use tools.
 
-Current workspace contents:
+WORKSPACE:
 {tree}
 
-TOOLS AVAILABLE:
-File: get_files_info, get_file_outline, get_file_content, write_file, edit_file, delete_file
-Execution: run_code (auto-detects language from extension), run_command (shell commands)
-Search: search_files (grep-like pattern search across files)
+TOOLS:
+- File: get_files_info | get_file_outline (structure) | get_file_content (read ranges) | write_file | edit_file (search+replace) | delete_file
+- Execute: run_code (auto-detect language) | run_command (shell)
+- Search: search_files (grep)
 
 RULES:
-1. ALWAYS USE TOOLS. Never paste code in your response. Use write_file to create files. Use edit_file to modify existing files.
-2. EDIT vs WRITE: For modifying existing files, ALWAYS use edit_file. Only use write_file for new files.
-3. Multi-file projects get their own folder. Single scripts stay at workspace root.
-4. OUTLINE BEFORE EDIT: On large files, use get_file_outline first, then get_file_content with line ranges, then edit_file.
-5. ALWAYS RUN CODE after creating executable files to verify it works.
-6. SELF-CORRECTION: If code fails, read the error, fix it (install deps with run_command if needed, fix code with edit_file), and run again. Max 3 retries.
-7. DEPENDENCIES: Install required packages before running (pip install, npm install, etc.).
-8. GUI APPS (pygame, tkinter, etc.) timeout with run_code. Use run_command with 'start python file.py' on Windows to launch detached.
-9. Paths must be RELATIVE to the working directory.
-10. Keep responses brief and plain text. Do not repeat code you just wrote.
+1. Always use tools — never paste code. write_file=new, edit_file=changes.
+2. Large files: outline first, read ranges, then edit.
+3. Run code after creating files. If fails, fix and retry (max 3).
+4. Install deps before running (pip install, npm install, etc.).
+5. Paths relative to working directory.
+6. Multi-file projects in subfolders; single files at root.
 """
 
     def _has_execution_error(self, result_str: str) -> bool:

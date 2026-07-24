@@ -18,7 +18,7 @@ def get_file_content(working_directory, file_path, start_line=None, end_line=Non
         return f'Error: File not found: "{file_path}"'
 
     try:
-        with open(target_file_abs, "r", encoding="utf-8", errors="ignore") as f:
+        with open(target_file_abs, encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
     except Exception as e:
         return f"Error: {e}"
@@ -56,26 +56,21 @@ schema_get_file_content = {
     "type": "function",
     "function": {
         "name": "get_file_content",
-        "description": (
-            "Read the contents of a file. For small files (<=300 lines), returns the full file. "
-            "For large files, returns the first 50 and last 20 lines with a hint to use "
-            "start_line/end_line for specific ranges. "
-            "Use get_file_outline first to understand file structure before reading large files."
-        ),
+        "description": "Read a file. Small files (<300 lines) return fully. Large files show head+tail with line ranges.",
         "parameters": {
             "type": "object",
             "properties": {
                 "file_path": {
                     "type": "string",
-                    "description": "The relative path of the file to read.",
+                    "description": "File path relative to workspace.",
                 },
                 "start_line": {
                     "type": "integer",
-                    "description": "Optional 1-based starting line number to read from.",
+                    "description": "1-based start line (optional).",
                 },
                 "end_line": {
                     "type": "integer",
-                    "description": "Optional 1-based ending line number to read to (inclusive).",
+                    "description": "1-based end line inclusive (optional).",
                 },
             },
             "required": ["file_path"],

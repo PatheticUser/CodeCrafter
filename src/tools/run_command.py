@@ -1,7 +1,6 @@
-import subprocess
-import re
 import os
-
+import re
+import subprocess
 
 BLOCKED_PATTERNS = [
     r"rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?/",
@@ -89,22 +88,17 @@ schema_run_command = {
     "type": "function",
     "function": {
         "name": "run_command",
-        "description": (
-            "Executes a shell command in the working directory. "
-            "Use for: installing packages (npm, pip), git operations, "
-            "listing files, running build tools, or any terminal command. "
-            "Returns stdout, stderr, and exit code."
-        ),
+        "description": "Run a shell command in the workspace. Use for: pip install, npm, git, build tools.",
         "parameters": {
             "type": "object",
             "properties": {
                 "command": {
                     "type": "string",
-                    "description": "The shell command to execute.",
+                    "description": "Shell command to execute (e.g., 'pip install flask' or 'npm test').",
                 },
                 "timeout": {
                     "type": "integer",
-                    "description": "Maximum seconds to wait for the command to finish. Default is 30.",
+                    "description": "Max seconds. Default 30.",
                 },
             },
             "required": ["command"],

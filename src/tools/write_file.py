@@ -36,21 +36,17 @@ schema_write_file = {
     "type": "function",
     "function": {
         "name": "write_file",
-        "description": (
-            "Safely writes the provided content to a file within the working directory. "
-            "Creates the file and any missing directories if necessary. "
-            "Returns a success or error message."
-        ),
+        "description": "Create or overwrite a file. Creates parent directories if needed.",
         "parameters": {
             "type": "object",
             "properties": {
                 "file_path": {
                     "type": "string",
-                    "description": "The relative path of the file to write inside the working directory.",
+                    "description": "File path relative to workspace.",
                 },
                 "content": {
                     "type": "string",
-                    "description": "The content to write into the file.",
+                    "description": "Full file content to write.",
                 },
             },
             "required": ["file_path", "content"],

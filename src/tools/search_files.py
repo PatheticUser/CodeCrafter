@@ -1,6 +1,8 @@
 import os
 import re
 
+from src.tools._security import validate_directory
+
 
 def search_files(
     working_directory, pattern, directory=".", file_extension=None, case_sensitive=False
@@ -50,7 +52,7 @@ def search_files(
             relative_path = os.path.relpath(file_path, working_dir_abs)
 
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     for line_num, line in enumerate(f, 1):
                         if regex.search(line):
                             line_preview = line.rstrip()
@@ -91,26 +93,21 @@ schema_search_files = {
     "type": "function",
     "function": {
         "name": "search_files",
-        "description": (
-            "Search through workspace files for a text pattern (like grep). "
-            "Returns matching lines with file paths and line numbers, capped at 50 results. "
-            "Use this to find where something is defined, imported, or used before editing. "
-            "Supports regex patterns and optional file extension filtering."
-        ),
+        "description": "Search files for a pattern (grep). Returns file:line matches, capped at 50. Supports regex and extension filter.",
         "parameters": {
             "type": "object",
             "properties": {
                 "pattern": {
                     "type": "string",
-                    "description": "The text or regex pattern to search for in file contents.",
+                    "description": "Text or regex pattern to search for.",
                 },
                 "directory": {
                     "type": "string",
-                    "description": "Subdirectory to scope the search to.",
+                    "description": "Subdirectory to scope search. Default: workspace root.",
                 },
                 "file_extension": {
                     "type": "string",
-                    "description": "Optional file extension filter, e.g. '.py' to only search Python files.",
+                    "description": "Filter by extension, e.g. '.py'.",
                 },
             },
             "required": ["pattern"],

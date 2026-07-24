@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 class ToolRegistry:
@@ -29,8 +30,8 @@ class ToolRegistry:
         from src.tools.get_files_info import get_files_info, schema_get_files_info
         from src.tools.run_code import run_code, schema_run_code
         from src.tools.run_command import run_command, schema_run_command
-        from src.tools.search_files import search_files, schema_search_files
-        from src.tools.write_file import write_file, schema_write_file
+        from src.tools.search_files import schema_search_files, search_files
+        from src.tools.write_file import schema_write_file, write_file
 
         tool_defs = [
             ("get_files_info", get_files_info, schema_get_files_info),

@@ -2,35 +2,53 @@
 
 import os
 import re
+import shutil
 
 from src.core.settings import settings
 
 
+def terminal_width() -> int:
+    """Return the current terminal width (default 80)."""
+    return shutil.get_terminal_size((80, 20)).columns
+
+
+def _divider(char="\u2500", width=None) -> str:
+    w = width or min(terminal_width() - 4, 48)
+    return dim(char * w)
+
+
 class Icons:
-    AGENT = ""
-    CODE = ""
-    FILE = ""
-    FOLDER = ""
-    SUCCESS = "\U000f0e4a"
-    ERROR = "\U000f0028"
-    WARNING = "\U000f0026"
-    INFO = "\U000f059b"
-    PROMPT = "\U000f0db9"
-    ARROW = ""
-    GEAR = "\U000f04d3"
-    PLAY = "\U000f040a"
-    STOP = ""
-    TOKENS = "\u26a1"
-    ACTION_OK = "\u2713"
-    ACTION_ERR = "\u2717"
-    BRAIN = "\U000f09dd"
-    TIME = "\U000f06ad"
-    SEARCH = "\U000f0349"
-    WRITE = "\U000f03eb"
-    DELETE = "\U000f01b4"
-    DEBUG = "\U000f00e4"
-    EDIT = "\U000f03ea"
-    FIX = "\U000f0068"
+    # Updated Nerd Font glyphs for a richer visual experience
+    SUCCESS = "\uF00C"  # check mark
+    ERROR = "\uF00D"    # cross mark
+    WARNING = "\uF071"  # warning triangle
+    INFO = "\uF05A"     # info circle
+    PROMPT = "\uF054"   # right arrow prompt
+    ARROW = "\uF053"    # left arrow
+    BULLET = "\uF0A0"   # bullet circle
+    CODE = "\uF121"     # code symbol
+    WRITE = "\uF044"    # edit (pencil)
+    EDIT = "\uF040"     # edit (pencil)
+    DELETE = "\uF1F8"    # trash can
+    SEARCH = "\uF002"   # magnifying glass
+    GEAR = "\uF013"     # gear
+    PLAY = "\uF04B"     # play button
+    STOP = "\uF04D"     # stop button
+    TOKENS = "\u26A1"    # lightning bolt
+    AGENT = "\uF2BD"    # robot face
+    FIX = "\uF186"      # wrench
+    DIVIDER = "\u2500"
+    ELLIPSIS = "\u2026"
+    FILE = "\uF15B"     # file icon
+    FOLDER = "\uF115"   # folder icon
+    TIME = "\uF017"     # clock
+    SWITCH = "\uF21E"   # toggle switch
+    BRANCH_T = "\u251C"
+    BRANCH_L = "\u2514"
+    PIPE = "\u2502"
+    DIM_BULLET = "\uF0A0"
+    DIM_ELLIPSIS = "\u2026"
+    RSQUO = "\U000f0142"
 
 
 class Colors:
@@ -45,17 +63,14 @@ class Colors:
 
 
 def c(text: str, color: str) -> str:
-    """Apply color to text."""
     return f"{color}{text}{Colors.RESET}"
 
 
 def dim(text: str) -> str:
-    """Apply dim color to text."""
     return c(text, Colors.DIM)
 
 
 def clear_screen():
-    """Clear the terminal screen."""
     os.system("cls" if os.name == "nt" else "clear")
 
 
@@ -63,26 +78,19 @@ _shown_actions = []
 
 
 def reset_action_tracker():
-    """Reset the action deduplication tracker."""
     global _shown_actions
     _shown_actions = []
 
 
 def _friendly_command_label(cmd, is_error):
-    """Turn a raw shell command into a human-readable intent label."""
     cmd_lower = cmd.strip().lower()
-
     if cmd_lower.startswith(("pip install", "pip3 install")):
-        pkg = (
-            cmd.strip().split("install", 1)[1].strip().split()[0]
-            if "install" in cmd
-            else "packages"
-        )
+        pkg = cmd.strip().split("install", 1)[1].strip().split()[0] if "install" in cmd else "packages"
         status = c("failed", Colors.RED) if is_error else c("done", Colors.GREEN)
         return f"Installing {c(pkg, Colors.CYAN)}... {status}"
     if cmd_lower.startswith(("npm install", "npm i ")):
         status = c("failed", Colors.RED) if is_error else c("done", Colors.GREEN)
-        return f"Installing npm packages... {status}"
+        return "Installing npm packages... " + status
     if cmd_lower.startswith("npm init"):
         status = c("failed", Colors.RED) if is_error else c("done", Colors.GREEN)
         return f"Initializing npm project... {status}"
@@ -97,11 +105,7 @@ def _friendly_command_label(cmd, is_error):
         status = c("failed", Colors.RED) if is_error else c("done", Colors.GREEN)
         return f"Git {sub}... {status}"
     if cmd_lower.startswith("npm run"):
-        script = (
-            cmd.strip().split("run", 1)[1].strip().split()[0]
-            if "run" in cmd
-            else "script"
-        )
+        script = cmd.strip().split("run", 1)[1].strip().split()[0] if "run" in cmd else "script"
         status = c("failed", Colors.RED) if is_error else c("done", Colors.GREEN)
         return f"Running {c(script, Colors.CYAN)}... {status}"
     if cmd_lower.startswith(("mkdir", "md ")):
@@ -113,14 +117,12 @@ def _friendly_command_label(cmd, is_error):
     if "ensurepip" in cmd_lower:
         status = c("failed", Colors.RED) if is_error else c("done", Colors.GREEN)
         return f"Setting up pip... {status}"
-
     cmd_short = cmd.strip()[:35] + "..." if len(cmd.strip()) > 35 else cmd.strip()
     status = c("failed", Colors.RED) if is_error else c("done", Colors.GREEN)
     return f"Running {c(cmd_short, Colors.CYAN)}... {status}"
 
 
 def _strip_markdown(text: str) -> str:
-    """Remove common markdown formatting that doesn't render in terminals."""
     text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
     text = re.sub(r"(?<!\w)\*(.+?)\*(?!\w)", r"\1", text)
     text = re.sub(r"`([^`]+)`", r"\1", text)
@@ -134,105 +136,99 @@ def _strip_markdown(text: str) -> str:
     return text.strip()
 
 
+def _word_wrap(text: str, width: int) -> str:
+    if not text:
+        return text
+    lines = []
+    for para in text.split("\n"):
+        if len(para) <= width:
+            lines.append(para)
+        else:
+            words = para.split(" ")
+            line = ""
+            for word in words:
+                if len(line) + len(word) + 1 > width:
+                    lines.append(line)
+                    line = word
+                else:
+                    line = (line + " " + word).strip()
+            if line:
+                lines.append(line)
+    return "\n".join(lines)
+
+
 # ── Banner Functions ──────────────────────────────────────────────────────
 
-
-def show_intro_banner(user_name: str, model_name: str = ""):
+def show_intro_banner(user_name: str, model_name: str = "", fallback_count: int = 0):
     """Display the intro banner."""
     clear_screen()
+    width = min(terminal_width() - 4, 52)
     print()
-    print(
-        f"  {c(Icons.AGENT, Colors.CYAN)}  {c(settings.AGENT_NAME, Colors.BOLD)}  {dim('v' + settings.APP_VERSION)}"
-    )
-    divider = '\u2500' * settings.BANNER_WIDTH
-    sep = '\u2502'
-    print(f"  {dim(divider)}")
-    print(
-        f"  {dim(Icons.GEAR)}  Model: {c(model_name, Colors.CYAN)}  {dim(sep)}  Mode: {c('Interactive', Colors.GREEN)}"
-    )
-    print(
-        f"  {dim(Icons.INFO)}  Type {c('help', Colors.YELLOW)} for commands, {c('exit', Colors.YELLOW)} to close"
-    )
+    print(f"  {c(Icons.AGENT, Colors.CYAN)}  {c(settings.AGENT_NAME, Colors.BOLD)}  {dim('v' + settings.APP_VERSION)}")
+    print(f"  {_divider(width=width)}")
+    fallback_str = dim(f" +{fallback_count} fallback") if fallback_count else ""
+    print(f"  {dim(Icons.GEAR)}  Model: {c(model_name, Colors.CYAN)}{fallback_str}")
+    print(f"  {dim(Icons.INFO)}  Type {c('help', Colors.YELLOW)} for commands, {c('exit', Colors.YELLOW)} to quit")
     print()
-    print(
-        f"  {c(Icons.SUCCESS, Colors.GREEN)}  Hello {c(user_name, Colors.MAGENTA)}, ready to build something solid"
-    )
+    print(f"  {c(Icons.SUCCESS, Colors.GREEN)}  Hello {c(user_name, Colors.MAGENTA)}")
     print()
 
 
 def show_exit_banner(user_name: str):
     """Display the exit banner."""
+    width = min(terminal_width() - 4, 48)
     print()
-    line = dim('\u2500' * settings.BANNER_WIDTH)
-    print(f"  {line}")
-    print(f"  {c(Icons.STOP, Colors.RED)}  {c('Session Ended', Colors.BOLD)}")
-    print(
-        f"  {dim(Icons.INFO)}  See you soon, {c(user_name, Colors.MAGENTA)} {c('<3', Colors.MAGENTA)}"
-    )
-    print(f"  {line}")
+    print(f"  {_divider(width=width)}")
+    print(f"  {c(Icons.STOP, Colors.RED)}  {c('Goodbye', Colors.BOLD)}, {c(user_name, Colors.MAGENTA)}")
+    print(f"  {_divider(width=width)}")
     print()
+
+
+def show_model_switch(old_model: str, new_model: str):
+    """Display model fallback."""
+    arrow = "\u2192"
+    print(f"  {c(Icons.SWITCH, Colors.CYAN)}  {dim(old_model)} {c(arrow, Colors.YELLOW)} {c(new_model, Colors.CYAN)}")
 
 
 # ── Verbose Mode Functions ────────────────────────────────────────────────
 
-
 def show_verbose_config(working_dir: str, auto_update: bool):
-    """Display verbose configuration."""
+    width = min(terminal_width() - 4, 52)
     print()
-    print(f"  {c(Icons.DEBUG, Colors.YELLOW)}  {c('Verbose Mode', Colors.BOLD)}")
-    branch1 = dim('  \u251c\u2500')
-    branch2 = dim('  \u2514\u2500')
-    print(f"  {branch1}  Working Dir: {c(working_dir, Colors.CYAN)}")
-    print(
-        f"  {branch2}  Auto-update: {c(str(auto_update), Colors.GREEN if auto_update else Colors.RED)}"
-    )
+    print(f"  {c(Icons.GEAR, Colors.YELLOW)}  {c('Verbose Mode', Colors.BOLD)}")
+    print(f"  {_divider(width=width)}")
+    print(f"  {dim(Icons.BRANCH_T)}  Dir: {c(working_dir, Colors.CYAN)}")
+    print(f"  {dim(Icons.BRANCH_L)}  Auto-refresh: {c(str(auto_update), Colors.GREEN if auto_update else Colors.RED)}")
 
 
 def show_verbose_step(step: int):
-    """Display verbose step indicator."""
     print()
-    print(
-        f"  {c(Icons.PLAY, Colors.CYAN)}  {c(f'Step {step}', Colors.BOLD)}  {dim('processing...')}"
-    )
+    print(f"  {c(Icons.PLAY, Colors.CYAN)}  {c(f'Step {step}', Colors.BOLD)}  {dim('processing...')}")
 
 
 def show_verbose_function(func_name: str, func_args: dict):
-    """Display verbose function call."""
     args_display = str(func_args)
     if len(args_display) > 60:
         args_display = args_display[:60] + "..."
-    branch = dim('  \u251c\u2500')
-    print(
-        f"  {branch}  {Icons.CODE}  {c(func_name, Colors.MAGENTA)}({dim(args_display)})"
-    )
+    print(f"  {dim(Icons.BRANCH_T)}  {c(func_name, Colors.MAGENTA)}({dim(args_display)})")
 
 
 def show_verbose_result(result: str, is_error: bool = False):
-    """Display verbose function result."""
     icon = Icons.ERROR if is_error else Icons.SUCCESS
     color = Colors.RED if is_error else Colors.GREEN
-
     truncated = result[:settings.VERBOSE_TRUNCATE_LENGTH] + "..." if len(result) > settings.VERBOSE_TRUNCATE_LENGTH else result
     lines = truncated.split("\n")
     if len(lines) > settings.VERBOSE_MAX_LINES:
         truncated = "\n".join(lines[:settings.VERBOSE_MAX_LINES]) + "\n..."
-
-    branch = dim('  \u2514\u2500')
-    cleaned_res = dim(truncated.replace('\n', ' '))
-    print(f"  {branch}  {c(icon, color)}  {cleaned_res}")
+    print(f"  {dim(Icons.BRANCH_L)}  {c(icon, color)}  {dim(truncated.replace(chr(10), ' '))}")
 
 
 def show_verbose_tokens(prompt: int, response: int):
-    """Display verbose token usage."""
     total = prompt + response
-    token_str = f"tokens: {prompt:,} in \u2502 {response:,} out \u2502 {total:,} total"
-    print(
-        f"     {c(Icons.TOKENS, Colors.DIM)}  {dim(token_str)}"
-    )
+    print(f"     {c(Icons.TOKENS, Colors.DIM)}  {dim(f'{prompt:,} in {Icons.PIPE} {response:,} out {Icons.PIPE} {total:,} total')}")
 
 
 def show_function_call(func_name: str, target: str):
-    """Display function call indicator."""
     icon_map = {
         "get_files_info": Icons.FOLDER,
         "get_file_content": Icons.FILE,
@@ -244,18 +240,31 @@ def show_function_call(func_name: str, target: str):
         "run_command": Icons.GEAR,
         "search_files": Icons.SEARCH,
     }
-
     icon = icon_map.get(func_name, Icons.CODE)
-    print(
-        f"  {c(icon, Colors.DIM)}  {c(Icons.ARROW, Colors.CYAN)}  {func_name}  {dim(f'({target})')}"
-    )
+    print(f"  {c(icon, Colors.DIM)}  {c(Icons.ARROW, Colors.CYAN)}  {func_name}  {dim(f'({target})')}")
+
+
+# ── Diff Display ──────────────────────────────────────────────────────
+
+def show_diff(diff_text: str):
+    """Display a unified diff with green for additions, red for removals."""
+    if not diff_text.strip():
+        return
+    width = min(terminal_width() - 4, 72)
+    print(f"  {dim(_divider(char='~', width=width))}")
+    for line in diff_text.split("\n"):
+        if line.startswith("+"):
+            print(f"    {c(line, Colors.GREEN)}")
+        elif line.startswith("-"):
+            print(f"    {c(line, Colors.RED)}")
+        else:
+            print(f"    {dim(line)}")
+    print(f"  {dim(_divider(char='~', width=width))}")
 
 
 # ── Action Display ────────────────────────────────────────────────────────
 
-
 def show_action(func_name: str, func_args: dict, result=None):
-    """Show a single-line, human-readable description of what the agent did."""
     global _shown_actions
     file_path = func_args.get("file_path") or func_args.get("path") or ""
     is_error = result is not None and ("Error" in str(result) or "ERROR" in str(result))
@@ -292,72 +301,73 @@ def show_action(func_name: str, func_args: dict, result=None):
     else:
         label = f"{func_name}"
 
-    icon = Icons.ACTION_OK if not is_error else Icons.ACTION_ERR
-    icon_color = Colors.GREEN if not is_error else Colors.RED
-    print(f"  {c(icon, icon_color)}  {label}")
+    icon = c(Icons.SUCCESS, Colors.GREEN) if not is_error else c(Icons.ERROR, Colors.RED)
+    print(f"  {icon}  {label}")
+
+    if is_error and result:
+        err_preview = str(result)[:80].replace("\n", " ")
+        print(f"  {dim(Icons.RSQUO)}  {dim(err_preview)}")
 
 
 # ── Response Display ──────────────────────────────────────────────────────
 
-
 def show_agent_response(response_text: str):
     """Display the agent's response."""
     cleaned = _strip_markdown(response_text)
+    width = min(terminal_width() - 4, 72)
     print()
     print(f"  {c(Icons.AGENT, Colors.CYAN)}  {c(settings.AGENT_NAME, Colors.BOLD)}")
-    _line = "\u2500" * settings.BANNER_WIDTH
-    print(f"  {dim(_line)}")
-    for line in cleaned.split("\n"):
+    print(f"  {_divider(width=width)}")
+    wrapped = _word_wrap(cleaned, width)
+    for line in wrapped.split("\n"):
         print(f"  {line}")
     print()
 
 
+def show_token_usage(prompt_tokens: int, completion_tokens: int):
+    total = prompt_tokens + completion_tokens
+    print(f"  {dim(Icons.TOKENS)}  {dim(f'{prompt_tokens:,} in {Icons.PIPE} {completion_tokens:,} out {Icons.PIPE} {total:,} total')}")
+
+
 # ── Notification Functions ────────────────────────────────────────────────
 
-
 def show_warning(message: str):
-    """Display a warning message."""
     print()
-    print(
-        f"  {c(Icons.WARNING, Colors.YELLOW)}  {c('Warning', Colors.BOLD)}: {message}"
-    )
+    print(f"  {c(Icons.WARNING, Colors.YELLOW)}  {c('Warning', Colors.BOLD)}")
+    print(f"  {message}")
 
 
 def show_error(message: str):
-    """Display an error message."""
-    print(f"  {c(Icons.ERROR, Colors.RED)}  {message}")
+    width = min(terminal_width() - 4, 48)
+    print()
+    print(f"  {c(Icons.ERROR, Colors.RED)}  {c('Error', Colors.BOLD)}")
+    print(f"  {_divider(width=width)}")
+    for line in message.split("\n"):
+        print(f"  {c(line, Colors.RED)}")
+    print()
 
 
 def show_auto_fix(attempt: int, max_attempts: int = 3):
-    """Display auto-fix notification."""
-    print(
-        f"  {c(Icons.FIX, Colors.YELLOW)}  {dim(f'Auto-fixing (attempt {attempt}/{max_attempts})...')}"
-    )
+    print(f"  {c(Icons.FIX, Colors.YELLOW)}  {dim(f'{Icons.DIM_BULLET} Auto-fixing ({attempt}/{max_attempts})...')}")
 
 
 def show_help():
-    """Display available commands."""
+    width = min(terminal_width() - 4, 52)
     print()
-    print(f"  {c(Icons.INFO, Colors.CYAN)}  {c('Commands', Colors.BOLD)}")
-    line = dim('\u2500' * settings.BANNER_WIDTH)
-    print(f"  {line}")
-    cmds =    [
-        ("help", "Show this help message"),
-        ("exit / quit", "Exit"),
-    ]
-    for cmd, desc in cmds:
-        print(f"  {c(cmd, Colors.YELLOW):<30s}  {dim(desc)}")
+    print(f"  {c('Commands', Colors.BOLD)}  {_divider(width=width)}")
+    print(f"  {c('help', Colors.YELLOW):<30s}  {dim('Show this help')}")
+    print(f"  {c('exit / quit', Colors.YELLOW):<30s}  {dim('Exit')}")
     print()
 
 
 def get_user_name() -> str:
     """Prompt for user name."""
     clear_screen()
+    width = min(terminal_width() - 4, 48)
     print()
-    print(f"  {c(Icons.AGENT, Colors.CYAN)}  {c(settings.AGENT_NAME, Colors.BOLD)}")
-    line = dim('\u2500' * settings.BANNER_WIDTH)
-    print(f"  {line}")
-    print(f"  {dim(Icons.INFO)}  Project-aware AI coding assistant")
+    print(f"  {c(Icons.AGENT, Colors.CYAN)}  {c(settings.AGENT_NAME, Colors.BOLD)}  {dim('v' + settings.APP_VERSION)}")
+    print(f"  {_divider(width=width)}")
+    print(f"  {dim('AI coding assistant for your terminal')}")
     print()
     try:
         user_name = input(f"  {Icons.PROMPT}  Your name {c('>', Colors.CYAN)} ").strip()

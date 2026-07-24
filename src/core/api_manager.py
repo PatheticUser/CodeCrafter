@@ -47,7 +47,7 @@ class OllamaClient:
             )
         except Exception as e:
             print(f"  ERROR: Failed to connect to Ollama: {e}")
-            print(f"  Make sure Ollama is running: ollama serve")
+            print("  Make sure Ollama is running: ollama serve")
             sys.exit(1)
 
     @property

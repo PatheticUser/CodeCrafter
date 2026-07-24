@@ -68,24 +68,17 @@ schema_get_files_info = {
     "type": "function",
     "function": {
         "name": "get_files_info",
-        "description": (
-            "Recursively lists files in the specified directory (relative to the working directory). "
-            "Includes file size and modified date (without reading file content). "
-            "Ensures directory stays within the working directory."
-        ),
+        "description": "List files in a directory with sizes and dates. Stays inside workspace.",
         "parameters": {
             "type": "object",
             "properties": {
                 "directory": {
                     "type": "string",
-                    "description": (
-                        "The directory to list files from, relative to the working directory. "
-                        "If not provided, lists files in the working directory itself."
-                    ),
+                    "description": "Directory to list, relative to workspace. Default: workspace root.",
                 },
                 "verbose": {
                     "type": "boolean",
-                    "description": "Whether to print detailed info for each file while scanning.",
+                    "description": "Print detailed info per file.",
                 },
             },
             "required": [],

@@ -20,6 +20,9 @@ from .display import (
     show_verbose_result,
     show_verbose_tokens,
     show_function_call,
+    show_token_usage,
+    show_model_switch,
+    show_diff,
     get_user_name,
 )
 from .spinner import Spinner, spinner
@@ -45,6 +48,9 @@ __all__ = [
     "show_verbose_result",
     "show_verbose_tokens",
     "show_function_call",
+    "show_token_usage",
+    "show_model_switch",
+    "show_diff",
     "get_user_name",
     "Spinner",
     "spinner",

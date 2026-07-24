@@ -182,30 +182,22 @@ schema_run_code = {
     "type": "function",
     "function": {
         "name": "run_code",
-        "description": (
-            "Execute a code file. Auto-detects language from file extension. "
-            "Supports: Python (.py), JavaScript (.js/.mjs), TypeScript (.ts), "
-            "C/C++ (.c/.cpp/.cc), Go (.go), Rust (.rs), Java (.java), "
-            "Ruby (.rb), PHP (.php), Shell (.sh/.bat/.ps1). "
-            "HTML files open in the browser. "
-            "Compiles automatically for compiled languages. "
-            "Returns stdout, stderr, and exit code."
-        ),
+        "description": "Execute a code file. Auto-detects language: .py .js .ts .c .cpp .go .rs .java .rb .php .sh .html (opens browser). Compiles if needed.",
         "parameters": {
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Path to the file to execute, relative to the working directory.",
+                    "description": "File path relative to workspace.",
                 },
                 "args": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional command-line arguments to pass to the program.",
+                    "description": "CLI arguments for the program.",
                 },
                 "timeout": {
                     "type": "integer",
-                    "description": "Maximum seconds to wait for execution. Default is 30.",
+                    "description": "Max seconds. Default 30.",
                 },
             },
             "required": ["path"],

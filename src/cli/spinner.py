@@ -1,12 +1,12 @@
 """Animated spinner for CodeCrafter."""
 
 import random
+import sys
 import threading
 import time
-import sys
 
+from src.cli.display import Colors, c, dim
 from src.core.settings import settings
-from src.cli.display import c, Colors, dim
 
 
 class Spinner:

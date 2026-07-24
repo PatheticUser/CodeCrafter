@@ -196,19 +196,13 @@ schema_get_file_outline = {
     "type": "function",
     "function": {
         "name": "get_file_outline",
-        "description": (
-            "Get a token-efficient outline/skeleton of a file showing its structure: "
-            "imports, class definitions, function signatures, and their line numbers. "
-            "Use this BEFORE reading a large file to understand its structure and decide "
-            "which specific sections to read with get_file_content. "
-            "For small files (<=50 lines), returns the full content."
-        ),
+        "description": "Show file structure: imports, classes, functions with line numbers. Use before reading large files.",
         "parameters": {
             "type": "object",
             "properties": {
                 "file_path": {
                     "type": "string",
-                    "description": "The relative path of the file to outline.",
+                    "description": "File path relative to workspace.",
                 },
             },
             "required": ["file_path"],

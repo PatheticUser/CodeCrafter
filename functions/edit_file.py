@@ -1,6 +1,24 @@
 import os
+import difflib
 
 from functions._security import validate_path
+
+
+def _compute_diff(old_text: str, new_text: str, context_lines: int = 2) -> str:
+    """Compute a compact unified diff between old and new text."""
+    old_lines = old_text.splitlines()
+    new_lines = new_text.splitlines()
+    diff = difflib.unified_diff(
+        old_lines, new_lines,
+        n=context_lines,
+        lineterm="",
+    )
+    lines = []
+    for line in diff:
+        if line.startswith("---") or line.startswith("+++") or line.startswith("@@"):
+            continue
+        lines.append(line)
+    return "\n".join(lines)
 
 
 def edit_file(working_directory, file_path, old_content, new_content):
@@ -15,7 +33,7 @@ def edit_file(working_directory, file_path, old_content, new_content):
         new_content: The replacement text
 
     Returns:
-        Success message or error with context to help the LLM self-correct
+        Dict with 'result' and 'diff' keys on success, or error string on failure
     """
     # Security: path traversal check
     err = validate_path(working_directory, file_path)
@@ -65,6 +83,9 @@ def edit_file(working_directory, file_path, old_content, new_content):
         new_file_content = content.replace(old_content, new_content)
         warning = ""
 
+    # --- Compute diff (before writing) ---
+    diff_text = _compute_diff(content, new_file_content)
+
     # --- Write back ---
     try:
         with open(target_file_abs, "w", encoding="utf-8") as f:
@@ -73,7 +94,9 @@ def edit_file(working_directory, file_path, old_content, new_content):
         # Calculate what changed
         old_lines = old_content.count("\n") + 1
         new_lines = new_content.count("\n") + 1
-        return f'Successfully edited "{file_path}" — replaced {old_lines} line(s) with {new_lines} line(s){warning}'
+        result = f'Successfully edited "{file_path}" — replaced {old_lines} line(s) with {new_lines} line(s){warning}'
+
+        return {"result": result, "diff": diff_text}
 
     except Exception as e:
         return f"Error writing {file_path}: {e}"
@@ -84,26 +107,21 @@ schema_edit_file = {
     "type": "function",
     "function": {
         "name": "edit_file",
-        "description": (
-            "Make a surgical edit to an existing file by finding and replacing specific content. "
-            "Use this instead of write_file when you only need to change part of a file. "
-            "Provide the exact text to find (old_content) and its replacement (new_content). "
-            "If the old_content is not found, an error with a file preview is returned to help you correct your edit."
-        ),
+        "description": "Search+replace within a file. Use for targeted edits. Shows file preview on mismatch.",
         "parameters": {
             "type": "object",
             "properties": {
                 "file_path": {
                     "type": "string",
-                    "description": "The relative path of the file to edit.",
+                    "description": "File path relative to workspace.",
                 },
                 "old_content": {
                     "type": "string",
-                    "description": "The exact text currently in the file that you want to replace. Must match exactly including whitespace and indentation.",
+                    "description": "Exact text to find (whitespace-sensitive).",
                 },
                 "new_content": {
                     "type": "string",
-                    "description": "The new text to replace old_content with.",
+                    "description": "Replacement text.",
                 },
             },
             "required": ["file_path", "old_content", "new_content"],
