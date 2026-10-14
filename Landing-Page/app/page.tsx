@@ -32,8 +32,14 @@ export default function Home() {
             {"An Agentic AI for Autonomous Code Development and Debugging"}
           </p>
 
-          <div className="mt-10 flex items-center justify-center">
+          <div className="mt-10 flex flex-col items-center gap-4">
             <AccessModal />
+            <a
+              href="/workspace"
+              className="font-mono text-sm underline-offset-4 hover:underline"
+            >
+              {"Launch Workspace →"}
+            </a>
           </div>
         </div>
       </section>

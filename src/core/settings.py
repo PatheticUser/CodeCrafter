@@ -1,132 +1,32 @@
-"""Application settings using Pydantic Settings v2.
-
-All configuration flows through a single validated settings object.
-Reads from .env file and environment variables.
-"""
+"""Central application settings via Pydantic Settings."""
 
 from __future__ import annotations
 
 import os
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Environment(str, Enum):
+class Environment(StrEnum):
     """Deployment environment."""
 
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
+    TESTING = "testing"
+
+
+class WorkspaceBackend(StrEnum):
+    """Workspace execution backend."""
+
+    LOCAL = "local"
+    DOCKER = "docker"
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from .env / environment variables.
-
-    Every configurable value lives here as a typed field with a default.
-    Grouped logically: app metadata, Ollama config, agent behavior, paths, UI.
-    """
-
-    # ── App Metadata ──────────────────────────────────────────────────────
-
-    APP_NAME: str = "CodeCrafter"
-    APP_VERSION: str = "3.0.0"
-    APP_ENV: Environment = Environment.DEVELOPMENT
-
-    # ── Paths ─────────────────────────────────────────────────────────────
-
-    BASE_DIR: Path = Path(os.path.dirname(os.path.abspath(__file__))).parent.parent
-
-    @property
-    def workspace_dir(self) -> Path:
-        """Sandboxed working directory for user files."""
-        return self.BASE_DIR / "workspace"
-
-    @property
-    def sessions_dir(self) -> Path:
-        """Directory for JSON session persistence."""
-        return self.BASE_DIR / "sessions"
-
-    # ── Ollama / LLM Configuration ────────────────────────────────────────
-
-    OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
-    DEFAULT_MODEL: str = "gpt-oss:120b-cloud"
-
-    # Model shortcut aliases for --model flag
-    MODELS: dict[str, str] = {
-        "gpt-oss": "gpt-oss:120b-cloud",
-        "nemotron-super": "nemotron-3-super:cloud",
-    }
-
-    # Fallback chain — ordered by preference. All must support tool calling.
-    FALLBACK_MODELS: list[str] = [
-        "gpt-oss:120b-cloud",
-        "nemotron-3-super:cloud",
-    ]
-
-    # Token limits
-    MAX_TOKENS: int = 4096
-
-    # Future auth / secrets
-    # JWT_SECRET: SecretStr = SecretStr("change-me")
-    # DB_URL: str = ""
-
-    # ── Agent Loop Configuration ──────────────────────────────────────────
-
-    MAX_AGENT_STEPS: int = 25
-    MAX_AUTO_FIX: int = 3
-    CONTEXT_TRIM_THRESHOLD: int = 6
-    MAX_TREE_ITEMS: int = 50  # Workspace tree display cap
-
-    # ── UI Configuration ──────────────────────────────────────────────────
-
-    SPINNER_FRAME_DURATION: float = 0.12
-    SPINNER_WORD_SWITCH_INTERVAL: float = 6.0
-    SPINNER_WORDS: list[str] = [
-        "thinking ", "analyzing ", "building ", "crafting ",
-        "processing ", "resolving ", "computing ", "generating ",
-        "compiling ", "synthesizing ", "optimizing ", "evaluating ",
-        "reasoning ", "assembling ", "mapping ", "parsing ",
-        "loading ", "scanning ", "indexing ", "decoding ",
-        "linking ", "patching ", "tracing ", "wiring ",
-        "forging ", "hashing ", "querying ", "rendering ",
-        "buffering ", "streaming ", "iterating ", "traversing ",
-        "encoding ", "deploying ", "profiling ", "debugging ",
-        "refactoring ", "architecting ", "bootstrapping ", "calibrating ",
-    ]
-    SPINNER_FRAMES: list[str] = ["\U000f0698", "\U000f0699", "\U000f069a", "\U000f069b", "\U000f069c", "\U000f069d"]
-
-    # ── Display Configuration ─────────────────────────────────────────────
-
-    VERBOSE_TRUNCATE_LENGTH: int = 150
-    VERBOSE_MAX_LINES: int = 3
-    BANNER_WIDTH: int = 52
-
-    # ── File Operation Settings ───────────────────────────────────────────
-
-    FILE_MUTATING_TOOLS: set[str] = {"write_file", "edit_file", "delete_file", "run_command"}
-
-    # ── Error Detection Patterns ──────────────────────────────────────────
-
-    EXECUTION_ERROR_INDICATORS: list[str] = [
-        "Traceback (most recent",
-        "SyntaxError", "NameError", "TypeError", "ValueError",
-        "ImportError", "ModuleNotFoundError", "FileNotFoundError",
-        "IndentationError", "AttributeError", "KeyError", "IndexError",
-        "Compilation failed", "EXIT CODE: 1", "EXIT CODE: 2",
-    ]
-    TIMEOUT_INDICATOR: str = "timed out"
-    FALLBACK_TRIGGERS: list[str] = [
-        "429", "rate_limit", "503", "unavailable", "overloaded", "not found",
-    ]
-
-    # ── User Configuration ────────────────────────────────────────────────
-
-    DEFAULT_USER_NAME: str = "Developer"
-    AGENT_NAME: str = "CodeCrafter"
-
-    # ── Pydantic config ───────────────────────────────────────────────────
+    """Application settings loaded from environment variables and .env file."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -134,6 +34,103 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # ── App Metadata ──────────────────────────────────────────────────────
+    APP_NAME: str = "CodeCrafter"
+    APP_VERSION: str = "3.0.0"
+    APP_ENV: Environment = Environment.DEVELOPMENT
+    APP_HOST: str = "127.0.0.1"
+    APP_PORT: int = 8000
 
-# Singleton — import this everywhere instead of instantiating Settings.
+    # Base directory (project root)
+    BASE_DIR: Path = Path(os.path.dirname(os.path.abspath(__file__))).parent.parent
+
+    # ── LLM Configuration ─────────────────────────────────────────────────
+    LLM_BASE_URL: str = "https://api.openai.com/v1"
+    LLM_API_KEY: str = ""
+    LLM_MODEL: str = "gpt-4o-mini"
+    LLM_TIMEOUT_SECONDS: float = 120.0
+    LLM_MAX_RETRIES: int = 3
+    LLM_TEMPERATURE: float | None = 0.2
+    MAX_TOKENS: int = 8192
+
+    # ── Workspace Configuration ───────────────────────────────────────────
+    WORKSPACE_BACKEND: WorkspaceBackend = WorkspaceBackend.LOCAL
+    WORKSPACE_ROOT: Path | None = None
+    WORKSPACE_COMMAND_TIMEOUT: int = 60
+    WORKSPACE_CONTAINER_IMAGE: str = "python:3.11-slim"
+    WORKSPACE_MAX_OUTPUT_BYTES: int = 50000
+    WORKSPACE_MAX_FILE_BYTES: int = 5 * 1024 * 1024  # 5 MB
+
+    @property
+    def workspace_root_dir(self) -> Path:
+        """Root directory housing all project workspaces."""
+        if self.WORKSPACE_ROOT:
+            return self.WORKSPACE_ROOT
+        return self.BASE_DIR / "workspace"
+
+    # ── Persistence & Database ────────────────────────────────────────────
+    DATABASE_URL: str = "sqlite:///./data/codecrafter.db"
+
+    @property
+    def sqlite_db_path(self) -> Path:
+        """Extract filesystem path from sqlite URL."""
+        if self.DATABASE_URL.startswith("sqlite:///"):
+            raw_path = self.DATABASE_URL.removeprefix("sqlite:///")
+            if raw_path.startswith("./"):
+                return self.BASE_DIR / raw_path[2:]
+            return Path(raw_path)
+        return self.BASE_DIR / "data" / "codecrafter.db"
+
+    # ── Security & Networking ─────────────────────────────────────────────
+    API_TOKEN: str = ""
+    FRONTEND_ORIGIN: str = "http://localhost:3000"
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
+
+    # ── Agent Loop Limits ─────────────────────────────────────────────────
+    MAX_AGENT_STEPS: int = 25
+    MAX_AUTO_FIX: int = 3
+    CONTEXT_TRIM_THRESHOLD: int = 6
+    MAX_TREE_ITEMS: int = 50
+
+    # ── Legacy & UI Configuration ─────────────────────────────────────────
+    DEFAULT_USER_NAME: str = "Developer"
+    AGENT_NAME: str = "CodeCrafter"
+    FILE_MUTATING_TOOLS: set[str] = {"write_file", "edit_file", "delete_file", "run_command"}
+
+    EXECUTION_ERROR_INDICATORS: list[str] = [
+        "Traceback (most recent",
+        "SyntaxError",
+        "NameError",
+        "TypeError",
+        "ValueError",
+        "ImportError",
+        "ModuleNotFoundError",
+        "FileNotFoundError",
+        "IndentationError",
+        "AttributeError",
+        "KeyError",
+        "IndexError",
+        "Compilation failed",
+        "EXIT CODE: 1",
+        "EXIT CODE: 2",
+    ]
+    TIMEOUT_INDICATOR: str = "timed out"
+
+    # Legacy session compatibility
+    SESSION_PREFIX: str = "session_"
+    SESSION_TIMESTAMP_FORMAT: str = "%Y-%m-%d_%H-%M-%S"
+    SESSION_FILE_EXTENSION: str = ".json"
+    CORRUPT_EXTENSION: str = ".corrupt"
+    MAX_SESSION_MESSAGES: int = 50
+
+    @property
+    def sessions_dir(self) -> Path:
+        return self.BASE_DIR / "sessions"
+
+
 settings = Settings()

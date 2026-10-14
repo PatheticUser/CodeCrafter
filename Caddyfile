@@ -1,0 +1,50 @@
+# =============================================================================
+# CodeCrafter — Caddy reverse proxy
+#
+# {$CADDY_SITE} is read from .env.production (injected via env_file):
+#   CADDY_SITE=yourdomain.example   → automatic Let's Encrypt TLS (80 + 443)
+#   CADDY_SITE=http://203.0.113.10   → bare-IP deployment, HTTP only
+#
+# Caddy auto-obtains, renews and rotates certificates; no certbot needed.
+# Certs persist in the `codecrafter-caddy-data` named volume.
+# =============================================================================
+
+{$CADDY_SITE:localhost} {
+	# ── Compression ────────────────────────────────────────────────────────
+	encode zstd gzip
+
+	# ── Security headers (responses) ───────────────────────────────────────
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# ── Reverse proxy → app:8000 on the backend bridge network ─────────────
+	reverse_proxy app:8000 {
+		# WebSocket upgrade — pass the client's hop-by-hop headers through
+		# (Caddy also handles these automatically; explicit per proxy spec).
+		header_up Upgrade {>Upgrade}
+		header_up Connection {>Connection}
+
+		# Real client IP for the upstream app (X-Forwarded-For/Proto/Host are
+		# added by Caddy automatically — not repeated here).
+		header_up X-Real-IP {remote_host}
+
+		# Stream responses immediately — required for SSE (/v1/chat/stream)
+		# and for WebSocket frames; disables response buffering.
+		flush_interval -1
+
+		# Long agent turns: allow up to 300s upstream (mirrors old 5-min timeout).
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+		}
+	}
+}
+
+# Optional: redirect www → apex (uncomment and adjust)
+# www.yourdomain.example {
+#	redir https://yourdomain.example{uri} permanent
+# }

@@ -1,21 +1,15 @@
-#!/usr/bin/env python3
-"""CLI entry point for CodeCrafter.
-
-This module handles only terminal-specific concerns:
-- CLI argument parsing
-- Input loop (read user text → call agent → display results)
-- Display formatting
-
-The actual agent logic lives in src.core.agent.AgentLoop.
-"""
+"""CLI entry point for CodeCrafter acting as an adapter over canonical CodingAgent."""
 
 from __future__ import annotations
 
+import asyncio
+import os
 import sys
 
-# Fix Windows Unicode
+# Windows UTF-8 fix
 if sys.platform == "win32":
     import ctypes
+
     kernel32 = ctypes.windll.kernel32
     kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
     kernel32.SetConsoleCP(65001)
@@ -27,7 +21,6 @@ from src.cli.display import (
     Colors,
     Icons,
     c,
-    dim,
     get_user_name,
     reset_action_tracker,
     show_action,
@@ -38,143 +31,144 @@ from src.cli.display import (
     show_help,
     show_intro_banner,
     show_verbose_config,
-    show_verbose_function,
-    show_verbose_result,
     show_warning,
+    spinner,
 )
-from src.core.agent import AgentLoop
-from src.core.api_manager import OllamaClient
+from src.core.agent import CodingAgent
+from src.core.events import EventType
 from src.core.settings import settings
+from src.llm.openai_provider import OpenAICompatibleProvider
+from src.workspace.local import LocalWorkspace
 
 
 def parse_args():
-    """Parse command line arguments."""
+    """Parse command line flags."""
     args = sys.argv[1:]
     verbose = "--verbose" in args
 
-    selected_model = settings.DEFAULT_MODEL
-    for i, arg in enumerate(args):
+    selected_model = settings.LLM_MODEL
+    working_dir = None
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
         if arg == "--model" and i + 1 < len(args):
-            model_key = args[i + 1]
-            selected_model = settings.MODELS.get(model_key, model_key)
+            selected_model = args[i + 1]
+            i += 2
+        elif arg == "--path" and i + 1 < len(args):
+            working_dir = os.path.abspath(args[i + 1])
+            i += 2
+        else:
+            i += 1
 
-    return verbose, selected_model
+    return verbose, selected_model, working_dir
 
 
-def main():
-    """Main entry point for CodeCrafter CLI."""
-    verbose_mode, selected_model = parse_args()
+async def run_cli_loop():
+    """Async interactive CLI session."""
+    verbose_mode, selected_model, custom_path = parse_args()
 
-    # Initialize Ollama client
-    ollama = OllamaClient(primary_model=selected_model)
-    client = ollama.get_client()
+    workspace_path = custom_path or str(settings.workspace_root_dir)
+    workspace = LocalWorkspace(workspace_id="cli-workspace", root_dir=workspace_path)
 
-    # Initialize agent loop
-    agent = AgentLoop(client=client, model=ollama.active_model)
+    provider = OpenAICompatibleProvider(
+        base_url=settings.LLM_BASE_URL,
+        api_key=settings.LLM_API_KEY,
+        model=selected_model,
+        timeout_seconds=settings.LLM_TIMEOUT_SECONDS,
+        max_retries=settings.LLM_MAX_RETRIES,
+        default_temperature=settings.LLM_TEMPERATURE,
+    )
 
-    # Get user name and show intro
+    agent = CodingAgent(provider=provider)
     user_name = get_user_name()
-    show_intro_banner(user_name, ollama.active_model)
+    show_intro_banner(user_name, selected_model)
 
     if verbose_mode:
-        tree_char = "\u2514\u2500"
-        fallback_info = f" + {ollama.model_count() - 1} fallback(s)" if ollama.model_count() > 1 else ""
-        print(
-            f"  {dim('  ' + tree_char)}  Backend: {c('Ollama', Colors.CYAN)} (cloud){dim(fallback_info)}"
-        )
+        show_verbose_config(str(workspace.root_dir), True)
 
-    if verbose_mode:
-        show_verbose_config(str(settings.workspace_dir), True)
-
-    # Conversation history for the agent
-    messages: list[dict] = []
-
-    # ==========================================================================
-    # Main Agent Loop
-    # ==========================================================================
+    session_id = "cli-session"
+    conversation_history: list[dict] = []
 
     while True:
         try:
             arrow_char = "\u203a"
-            prompt = f"\n  {c(Icons.PROMPT, Colors.MAGENTA)} {c(user_name, Colors.BOLD)} {c(arrow_char, Colors.CYAN)} "
-            user_prompt = input(prompt)
-        except EOFError:
+            prompt_str = (
+                f"\n  {c(Icons.PROMPT, Colors.MAGENTA)} {c(user_name, Colors.BOLD)}"
+                f" {c(arrow_char, Colors.CYAN)} "
+            )
+            user_prompt = input(prompt_str)
+        except (EOFError, KeyboardInterrupt):
             print()
-            show_warning("Input stream closed.")
-            show_exit_banner(user_name)
-            break
-        except KeyboardInterrupt:
-            print()
-            show_warning("Interrupted.")
             show_exit_banner(user_name)
             break
 
         if not user_prompt.strip():
             continue
 
-        reset_action_tracker()
-
-        cmd_lower = user_prompt.strip().lower()
-
-        # Built-in commands
-        if cmd_lower in ["e", "q", "exit", "quit"]:
+        cmd = user_prompt.strip().lower()
+        if cmd in ("exit", "quit", "q", "e"):
             show_exit_banner(user_name)
             break
-
-        if cmd_lower == "help":
+        if cmd == "help":
             show_help()
             continue
 
-        # Add user message and run agent
-        messages.append({"role": "user", "content": user_prompt})
-        ollama.reset()
-        agent.active_model = ollama.active_model
+        reset_action_tracker()
+        run_id = f"cli_run_{len(conversation_history)}"
 
-        for step_response in agent.run_turn_streaming(
-            messages,
-            str(settings.workspace_dir),
-        ):
-            if step_response.tool_calls:
-                for tc, tr in zip(step_response.tool_calls, step_response.tool_results):
-                    func_name = tc["name"]
-                    func_args = tc["arguments"]
-                    result = tr["result"]
+        if not verbose_mode:
+            spinner.start()
 
-                    file_path = func_args.get("file_path") or func_args.get("path")
+        try:
+            async for event in agent.run(
+                prompt=user_prompt,
+                workspace=workspace,
+                session_id=session_id,
+                run_id=run_id,
+                conversation_history=conversation_history,
+            ):
+                if not verbose_mode and spinner.is_running:
+                    spinner.stop()
 
+                if event.type == EventType.TOOL_STARTED:
+                    tool_name = event.data.get("tool", "")
+                    args = event.data.get("arguments", {})
+                    path = args.get("file_path") or args.get("path") or args.get("command", "")
                     if verbose_mode:
-                        show_function_call(
-                            func_name,
-                            file_path or func_args.get("command", "") or func_args.get("pattern", "") or "context",
-                        )
-                        show_verbose_function(func_name, func_args)
-                    else:
-                        show_action(func_name, func_args, result)
-                        # Show diff for successful edits
-                        if func_name == "edit_file" and isinstance(result, dict) and "diff" in result:
-                            show_diff(result["diff"])
+                        show_function_call(tool_name, path)
 
-                    if verbose_mode:
-                        is_error = "ERROR" in str(result) or "Error" in str(result)
-                        show_verbose_result(str(result), is_error)
+                elif event.type == EventType.TOOL_COMPLETED:
+                    tool_name = event.data.get("tool", "")
+                    result = event.data.get("result", "")
+                    diff = event.data.get("diff")
+                    if not verbose_mode:
+                        show_action(tool_name, {}, result)
+                        if diff:
+                            show_diff(diff)
 
-                    # Refresh workspace after file-mutating operations
-                    if func_name in settings.FILE_MUTATING_TOOLS:
-                        pass  # workspace tree will be refreshed on next system prompt
+                elif event.type == EventType.TOOL_FAILED:
+                    tool_name = event.data.get("tool", "")
+                    err = event.data.get("error", "")
+                    show_warning(f"Tool {tool_name} error: {err}")
 
-            if step_response.text:
-                show_agent_response(step_response.text)
+                elif event.type == EventType.AGENT_MESSAGE:
+                    show_agent_response(event.data.get("content", ""))
 
-            if step_response.token_usage:
-                usage = step_response.token_usage
-                prompt_tok = usage["prompt_tokens"]
-                completion_tok = usage["completion_tokens"]
-                total = usage["total_tokens"]
-                print(
-                    f"  {dim(Icons.TOKENS)}  {dim(f'{prompt_tok:,} in | {completion_tok:,} out | {total:,} total')}"
-                )
+                elif event.type == EventType.AGENT_FAILED:
+                    show_warning(f"Agent failed: {event.data.get('error')}")
+
+            # Keep conversation history bounded
+            conversation_history.append({"role": "user", "content": user_prompt})
+
+        finally:
+            if spinner.is_running:
+                spinner.stop()
 
 
+def main():
+    """Main CLI runner."""
+    asyncio.run(run_cli_loop())
 
 
 if __name__ == "__main__":

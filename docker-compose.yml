@@ -1,0 +1,143 @@
+# =============================================================================
+# CodeCrafter — Docker Compose for Oracle Cloud ARM64 (Ampere A1) + Caddy
+#
+#   docker compose --env-file .env.production up -d --build
+#
+# Topology:
+#   Internet ──80/443──▶ caddy ──backend network──▶ app:8000
+#
+#   * Only Caddy publishes host ports (80/tcp, 443/tcp+udp for HTTP/3).
+#   * The app container publishes NO ports — port 8000 is reachable only on
+#     the dedicated internal bridge network, never from the host or internet.
+#   * Both services restart automatically, rotate logs, and expose healthchecks.
+#
+# All runtime secrets/keys live in .env.production (see .env.production notes),
+# injected via `env_file` — nothing is baked into the image.
+# =============================================================================
+
+name: codecrafter
+
+# Shared log rotation: cap each container at 5 × 10 MB to protect the
+# small Always Free VM disk from unbounded json-file log growth.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  # ── Application (FastAPI + agent loop) ────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Native build on the Ampere A1 → linux/arm64 automatically.
+      # For cross-builds: docker buildx build --platform linux/amd64,linux/arm64 .
+    image: codecrafter:latest
+    container_name: codecrafter-app
+    restart: unless-stopped
+
+    # Start command: uvicorn serving src.api.app on internal port 8000.
+    # UVICORN_WORKERS comes from .env.production (defaults to 1).
+    # --proxy-headers honors Caddy's X-Forwarded-* (safe: only Caddy can reach
+    # this port on the backend network), so access logs show real client IPs.
+    command: >
+      /app/.venv/bin/uvicorn src.api.app:app
+      --host 0.0.0.0
+      --port 8000
+      --workers ${UVICORN_WORKERS:-1}
+      --timeout-keep-alive 65
+      --proxy-headers
+      --forwarded-allow-ips=*
+      --access-log
+
+    env_file:
+      - .env.production
+
+    environment:
+      APP_ENV: production
+      # State lives on external named volumes, never the container FS.
+      CODECRAFTER_WORKING_DIR: /tmp/workspace
+      CODECRAFTER_SESSIONS_DIR: /tmp/sessions
+
+    # No `ports:` — internal isolation. Caddy reaches it via the backend
+    # network at app:8000.
+    networks:
+      - backend
+
+    volumes:
+      # Persist agent workspace + JSON sessions across container updates.
+      # Named volumes inherit uid 1001 ownership from the image on first use.
+      - app_workspace:/tmp/workspace
+      - app_sessions:/tmp/sessions
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+    logging: *default-logging
+
+    # Hardening: drop all caps except what's needed, no privilege escalation.
+    security_opt:
+      - no-new-privileges:true
+
+  # ── Reverse proxy (automatic Let's Encrypt TLS + WebSocket/SSE) ───────────
+  caddy:
+    image: caddy:2            # official multi-arch image (amd64 + arm64)
+    container_name: codecrafter-caddy
+    restart: unless-stopped
+
+    depends_on:
+      app:
+        condition: service_healthy
+
+    ports:
+      - "80:80"               # HTTP + ACME HTTP-01 challenge
+      - "443:443"             # HTTPS
+      - "443:443/udp"         # HTTP/3 (QUIC)
+
+    # Caddyfile reads {$CADDY_SITE} (and other keys) straight from the
+    # container env — no interpolation needed at the compose CLI level.
+    env_file:
+      - .env.production
+
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # TLS certificates persist here
+      - caddy_config:/config
+
+    networks:
+      - backend
+
+    healthcheck:
+      # Caddy's local admin API (127.0.0.1:2019, not exposed) proves the
+      # process is responsive. busybox wget ships in the alpine-based image.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    logging: *default-logging
+
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  # Dedicated bridge network — app is only reachable by Caddy here.
+  backend:
+    name: codecrafter-backend
+    driver: bridge
+
+volumes:
+  app_workspace:
+    name: codecrafter-workspace
+  app_sessions:
+    name: codecrafter-sessions
+  caddy_data:
+    name: codecrafter-caddy-data
+  caddy_config:
+    name: codecrafter-caddy-config

@@ -1,35 +1,28 @@
-import os
+"""Tool: write_file — create or overwrite a file in workspace."""
 
-from src.tools._security import validate_path
+from __future__ import annotations
+
+from pathlib import Path
+
+from src.workspace.base import Workspace
+from src.workspace.local import LocalWorkspace
 
 
-def write_file(working_directory, file_path, content):
-    """
-    Safely writes to a file within working_directory.
-    Creates the file if it doesn't exist.
-    """
-    err = validate_path(working_directory, file_path)
-    if err:
-        return err
-
-    target_file_abs = os.path.realpath(os.path.join(working_directory, file_path))
-
-    try:
-        parent_dir = os.path.dirname(target_file_abs)
-        if not os.path.exists(parent_dir):
-            os.makedirs(parent_dir, exist_ok=True)
-    except Exception as e:
-        return f"Error: Failed to create directories for {file_path}: {e}"
+async def write_file(
+    workspace: Workspace | Path | str,
+    file_path: str,
+    content: str,
+) -> str:
+    """Safely writes to a file within workspace, creating parent directories if needed."""
+    if isinstance(workspace, (str, Path)):
+        ws: Workspace = LocalWorkspace(workspace_id="local", root_dir=workspace)
+    else:
+        ws = workspace
 
     try:
-        with open(target_file_abs, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        return (
-            f'Successfully wrote to "{file_path}" ({len(content)} characters written)'
-        )
+        return await ws.write_file(file_path, content)
     except Exception as e:
-        return f"Error: Failed to write to {file_path}: {e}"
+        return f"Error: Failed to write to '{file_path}': {e}"
 
 
 schema_write_file = {

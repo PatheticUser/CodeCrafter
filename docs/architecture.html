@@ -1,0 +1,1317 @@
+<title>CodeCrafter Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg:        #0d1117;
+    --bg-panel:  #161b22;
+    --bg-card:   #1c2333;
+    --bg-hover:  #243044;
+    --border:    #2a3548;
+    --border-hi: #3b4f6b;
+    --text:      #e6edf3;
+    --text-dim:  #8b949e;
+    --text-mute: #484f58;
+    --accent:    #58a6ff;
+    --accent2:   #7ee787;
+    --accent3:   #f0883e;
+    --accent4:   #d2a8ff;
+    --danger:    #ff7b72;
+    --node-cli:  #1a3a5c;
+    --node-api:  #1a3f2d;
+    --node-core: #2d1f4a;
+    --node-tool: #3a2b0f;
+    --node-ext:  #3a1515;
+    --node-inf:  #1a3a5c;
+    --node-sec:  #2a2d12;
+    --flow-color:#58a6ff;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg:        #f0f4f8;
+      --bg-panel:  #ffffff;
+      --bg-card:   #f6f9fc;
+      --bg-hover:  #e8eef5;
+      --border:    #d0d7de;
+      --border-hi: #8ab4d8;
+      --text:      #1f2328;
+      --text-dim:  #656d76;
+      --text-mute: #adb5bd;
+      --accent:    #0969da;
+      --accent2:   #1a7f37;
+      --accent3:   #bc4c00;
+      --accent4:   #8250df;
+      --danger:    #d1242f;
+      --node-cli:  #dbeafe;
+      --node-api:  #dcfce7;
+      --node-core: #f3e8ff;
+      --node-tool: #fef3c7;
+      --node-ext:  #fee2e2;
+      --node-inf:  #dbeafe;
+      --node-sec:  #fefce8;
+      --flow-color:#0969da;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:        #0d1117;
+    --bg-panel:  #161b22;
+    --bg-card:   #1c2333;
+    --bg-hover:  #243044;
+    --border:    #2a3548;
+    --border-hi: #3b4f6b;
+    --text:      #e6edf3;
+    --text-dim:  #8b949e;
+    --text-mute: #484f58;
+    --accent:    #58a6ff;
+    --accent2:   #7ee787;
+    --accent3:   #f0883e;
+    --accent4:   #d2a8ff;
+    --danger:    #ff7b72;
+    --node-cli:  #1a3a5c;
+    --node-api:  #1a3f2d;
+    --node-core: #2d1f4a;
+    --node-tool: #3a2b0f;
+    --node-ext:  #3a1515;
+    --node-inf:  #1a3a5c;
+    --node-sec:  #2a2d12;
+    --flow-color:#58a6ff;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 100;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 12px; }
+
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+  }
+
+  .logo span { color: var(--text-dim); font-weight: 400; }
+
+  .version-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 2px 7px;
+    border-radius: 12px;
+  }
+
+  .header-controls { display: flex; align-items: center; gap: 8px; }
+
+  .btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--bg-hover); color: var(--text); border-color: var(--border-hi); }
+  .btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding: 10px 20px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* ── Main layout ── */
+  .app { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Diagram panel ── */
+  .diagram-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+  }
+  .diagram-wrap.grabbing { cursor: grabbing; }
+
+  svg#arch {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── Side panel ── */
+  .side-panel {
+    width: 320px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.2s;
+  }
+  .side-panel.collapsed { width: 0; border-left: none; }
+
+  .side-panel-inner {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 400;
+  }
+
+  .panel-subtitle {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .panel-section { margin-bottom: 16px; }
+
+  .panel-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-mute);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .panel-section p {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .file-tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin: 2px 2px 2px 0;
+  }
+
+  .pill-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+
+  .pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    background: var(--bg-card);
+  }
+
+  .dep-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .dep-item:last-child { border-bottom: none; }
+  .dep-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  .empty-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 8px;
+    color: var(--text-mute);
+    font-size: 12px;
+    text-align: center;
+    padding: 20px;
+  }
+  .empty-panel svg { opacity: 0.3; }
+
+  /* ── Flow mode ── */
+  .flow-step-bar {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .flow-step-bar.visible { display: flex; }
+
+  .flow-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+
+  .flow-step-dots { display: flex; gap: 5px; align-items: center; }
+  .flow-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .flow-dot.active { background: var(--flow-color); transform: scale(1.4); }
+  .flow-dot.done { background: var(--accent2); }
+
+  .flow-desc {
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+    min-width: 140px;
+  }
+
+  /* ── Zoom controls ── */
+  .zoom-controls {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 10;
+  }
+
+  .zoom-btn {
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    line-height: 1;
+  }
+  .zoom-btn:hover { background: var(--bg-hover); }
+
+  /* ── SVG node styles (set via JS but also useful as fallback) ── */
+  .node-group { cursor: pointer; }
+
+  .node-group rect.node-bg {
+    rx: 8;
+    transition: filter 0.15s;
+  }
+  .node-group:hover rect.node-bg {
+    filter: brightness(1.3);
+  }
+  .node-group.highlighted rect.node-bg {
+    stroke-width: 2;
+  }
+  .node-group.dimmed { opacity: 0.25; }
+
+  .node-label {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    fill: var(--text);
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  .node-sublabel {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    fill: var(--text-dim);
+    pointer-events: none;
+    text-anchor: middle;
+  }
+
+  .edge {
+    fill: none;
+    stroke: var(--border-hi);
+    stroke-width: 1.5;
+    marker-end: url(#arrowhead);
+  }
+  .edge.primary {
+    stroke: var(--flow-color);
+    stroke-width: 2;
+    opacity: 0.85;
+  }
+  .edge.highlighted {
+    stroke: var(--accent3);
+    stroke-width: 2.5;
+    opacity: 1;
+  }
+  .edge.dimmed { opacity: 0.08; }
+
+  .edge-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    fill: var(--text-mute);
+    text-anchor: middle;
+  }
+
+  .cluster-rect {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+    rx: 10;
+  }
+
+  .cluster-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    fill: var(--text-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+
+  /* ── Responsive collapse ── */
+  @media (max-width: 700px) {
+    .side-panel { display: none; }
+    .side-panel.mobile-open { display: flex; position: fixed; right: 0; top: 0; bottom: 0; width: min(320px, 100vw); z-index: 200; }
+    .legend { display: none; }
+  }
+</style>
+
+<header>
+  <div class="header-left">
+    <div class="logo">CodeCrafter <span>/ Runtime Architecture</span></div>
+    <div class="version-badge">v3.0.0</div>
+  </div>
+  <div class="header-controls">
+    <button class="btn" id="btnFlow">▶ Trace Flow</button>
+    <button class="btn" id="btnReset">Reset View</button>
+    <button class="btn" id="btnPanel">Hide Panel</button>
+  </div>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#1a3a5c;border-color:#58a6ff;"></div>CLI / Entry</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1a3f2d;border-color:#7ee787;"></div>API / FastAPI</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2d1f4a;border-color:#d2a8ff;"></div>Core Agent</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#3a2b0f;border-color:#f0883e;"></div>Tools</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2a2d12;border-color:#e3b341;"></div>Security</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#3a1515;border-color:#ff7b72;"></div>External</div>
+  <div class="legend-item">
+    <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#58a6ff" stroke-width="2"/><polygon points="18,1 24,4 18,7" fill="#58a6ff"/></svg>
+    Primary path
+  </div>
+</div>
+
+<div class="app">
+  <div class="diagram-wrap" id="diagramWrap">
+    <svg id="arch" viewBox="0 0 1100 700" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="var(--border-hi)"/>
+        </marker>
+        <marker id="arrowhead-primary" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="var(--flow-color)"/>
+        </marker>
+        <marker id="arrowhead-hi" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="var(--accent3)"/>
+        </marker>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- Cluster: Entry Points -->
+      <rect class="cluster-rect" x="18" y="16" width="300" height="180"/>
+      <text class="cluster-label" x="28" y="30">Entry Points</text>
+
+      <!-- Cluster: Core -->
+      <rect class="cluster-rect" x="360" y="16" width="380" height="300"/>
+      <text class="cluster-label" x="370" y="30">Core Runtime</text>
+
+      <!-- Cluster: Tools -->
+      <rect class="cluster-rect" x="360" y="340" width="380" height="340"/>
+      <text class="cluster-label" x="370" y="355">Tool Layer</text>
+
+      <!-- Cluster: External -->
+      <rect class="cluster-rect" x="770" y="16" width="314" height="300"/>
+      <text class="cluster-label" x="780" y="30">External Services</text>
+
+      <!-- ── Nodes ── -->
+
+      <!-- N1: CLI Entry (main.py) -->
+      <g class="node-group" id="n-cli" data-id="cli">
+        <rect class="node-bg" x="30" y="50" width="140" height="56" rx="8"
+              fill="var(--node-cli)" stroke="#58a6ff" stroke-width="1.5"/>
+        <text class="node-label" x="100" y="72">main.py</text>
+        <text class="node-sublabel" x="100" y="88">CLI Entry · uv run main.py</text>
+      </g>
+
+      <!-- N2: src/cli/main.py (refactored CLI) -->
+      <g class="node-group" id="n-cli2" data-id="cli2">
+        <rect class="node-bg" x="190" y="50" width="118" height="56" rx="8"
+              fill="var(--node-cli)" stroke="#58a6ff" stroke-width="1" stroke-dasharray="4 3"/>
+        <text class="node-label" x="249" y="72">src/cli/main.py</text>
+        <text class="node-sublabel" x="249" y="88">Refactored CLI</text>
+      </g>
+
+      <!-- N3: FastAPI (src/api/app.py) -->
+      <g class="node-group" id="n-api" data-id="api">
+        <rect class="node-bg" x="30" y="130" width="140" height="56" rx="8"
+              fill="var(--node-api)" stroke="#7ee787" stroke-width="1.5"/>
+        <text class="node-label" x="100" y="152">FastAPI</text>
+        <text class="node-sublabel" x="100" y="168">src/api/app.py · Cloud Run</text>
+      </g>
+
+      <!-- N4: AgentLoop -->
+      <g class="node-group" id="n-agent" data-id="agent">
+        <rect class="node-bg" x="372" y="50" width="160" height="64" rx="8"
+              fill="var(--node-core)" stroke="#d2a8ff" stroke-width="2"/>
+        <text class="node-label" x="452" y="74">AgentLoop</text>
+        <text class="node-sublabel" x="452" y="92">src/core/agent.py</text>
+      </g>
+
+      <!-- N5: InferenceClient / GeminiClient -->
+      <g class="node-group" id="n-inf" data-id="inf">
+        <rect class="node-bg" x="555" y="50" width="170" height="64" rx="8"
+              fill="var(--node-inf)" stroke="#58a6ff" stroke-width="1.5"/>
+        <text class="node-label" x="640" y="74">GeminiClient</text>
+        <text class="node-sublabel" x="640" y="92">src/core/api_manager.py</text>
+      </g>
+
+      <!-- N6: Settings -->
+      <g class="node-group" id="n-settings" data-id="settings">
+        <rect class="node-bg" x="372" y="140" width="130" height="50" rx="8"
+              fill="var(--node-core)" stroke="#d2a8ff" stroke-width="1"/>
+        <text class="node-label" x="437" y="162">Settings</text>
+        <text class="node-sublabel" x="437" y="177">src/core/settings.py</text>
+      </g>
+
+      <!-- N7: WorkspaceScanner -->
+      <g class="node-group" id="n-ws" data-id="ws">
+        <rect class="node-bg" x="520" y="140" width="145" height="50" rx="8"
+              fill="var(--node-core)" stroke="#d2a8ff" stroke-width="1"/>
+        <text class="node-label" x="592" y="162">WorkspaceScanner</text>
+        <text class="node-sublabel" x="592" y="177">core/workspace.py</text>
+      </g>
+
+      <!-- N8: ToolRegistry -->
+      <g class="node-group" id="n-registry" data-id="registry">
+        <rect class="node-bg" x="372" y="220" width="145" height="56" rx="8"
+              fill="var(--node-core)" stroke="#d2a8ff" stroke-width="1.5"/>
+        <text class="node-label" x="444" y="244">ToolRegistry</text>
+        <text class="node-sublabel" x="444" y="260">src/tools/registry.py</text>
+      </g>
+
+      <!-- N9: SecurityModule -->
+      <g class="node-group" id="n-sec" data-id="sec">
+        <rect class="node-bg" x="535" y="220" width="155" height="56" rx="8"
+              fill="var(--node-sec)" stroke="#e3b341" stroke-width="1.5"/>
+        <text class="node-label" x="612" y="244">PathSecurity</text>
+        <text class="node-sublabel" x="612" y="260">functions/_security.py</text>
+      </g>
+
+      <!-- N10: Tools cluster (inside tool layer) -->
+      <!-- File Tools -->
+      <g class="node-group" id="n-filetools" data-id="filetools">
+        <rect class="node-bg" x="372" y="375" width="155" height="70" rx="8"
+              fill="var(--node-tool)" stroke="#f0883e" stroke-width="1.5"/>
+        <text class="node-label" x="449" y="400">File Tools</text>
+        <text class="node-sublabel" x="449" y="415">write · edit · read</text>
+        <text class="node-sublabel" x="449" y="428">delete · outline · search</text>
+      </g>
+
+      <!-- Exec Tools -->
+      <g class="node-group" id="n-exectools" data-id="exectools">
+        <rect class="node-bg" x="545" y="375" width="155" height="70" rx="8"
+              fill="var(--node-tool)" stroke="#f0883e" stroke-width="1.5"/>
+        <text class="node-label" x="622" y="400">Exec Tools</text>
+        <text class="node-sublabel" x="622" y="415">run_code · run_command</text>
+        <text class="node-sublabel" x="622" y="428">15+ languages</text>
+      </g>
+
+      <!-- N11: Workspace (fs) -->
+      <g class="node-group" id="n-fss" data-id="fss">
+        <rect class="node-bg" x="420" y="490" width="195" height="50" rx="8"
+              fill="var(--node-sec)" stroke="#e3b341" stroke-width="1"/>
+        <text class="node-label" x="517" y="512">workspace/ (sandbox)</text>
+        <text class="node-sublabel" x="517" y="527">path-traversal protected</text>
+      </g>
+
+      <!-- N12: Session Store -->
+      <g class="node-group" id="n-sessions" data-id="sessions">
+        <rect class="node-bg" x="420" y="570" width="195" height="50" rx="8"
+              fill="var(--node-sec)" stroke="#e3b341" stroke-width="1"/>
+        <text class="node-label" x="517" y="592">sessions/ (JSON)</text>
+        <text class="node-sublabel" x="517" y="607">conversation history</text>
+      </g>
+
+      <!-- External: Google Gemini -->
+      <g class="node-group" id="n-gemini" data-id="gemini">
+        <rect class="node-bg" x="782" y="50" width="150" height="64" rx="8"
+              fill="var(--node-ext)" stroke="#ff7b72" stroke-width="1.5"/>
+        <text class="node-label" x="857" y="74">Google Gemini</text>
+        <text class="node-sublabel" x="857" y="92">generativelanguage API</text>
+      </g>
+
+      <!-- External: Ollama (legacy) -->
+      <g class="node-group" id="n-ollama" data-id="ollama">
+        <rect class="node-bg" x="782" y="140" width="150" height="56" rx="8"
+              fill="var(--node-ext)" stroke="#ff7b72" stroke-width="1" stroke-dasharray="4 3"/>
+        <text class="node-label" x="857" y="163">Ollama (legacy)</text>
+        <text class="node-sublabel" x="857" y="178">core/api_manager.py</text>
+      </g>
+
+      <!-- External: Cloud Run -->
+      <g class="node-group" id="n-cloudrun" data-id="cloudrun">
+        <rect class="node-bg" x="782" y="220" width="150" height="56" rx="8"
+              fill="var(--node-ext)" stroke="#ff7b72" stroke-width="1.5"/>
+        <text class="node-label" x="857" y="244">Cloud Run</text>
+        <text class="node-sublabel" x="857" y="260">Dockerfile · cloudbuild.yaml</text>
+      </g>
+
+      <!-- ── Edges ── -->
+
+      <!-- CLI → AgentLoop (PRIMARY) -->
+      <path class="edge primary" id="e-cli-agent"
+            d="M170,78 L372,82" marker-end="url(#arrowhead-primary)"/>
+      <text class="edge-label" x="270" y="72">user prompt</text>
+
+      <!-- CLI2 → AgentLoop -->
+      <path class="edge" d="M249,106 L452,140" marker-end="url(#arrowhead)"/>
+
+      <!-- FastAPI → AgentLoop (PRIMARY) -->
+      <path class="edge primary" id="e-api-agent"
+            d="M170,158 L372,82" marker-end="url(#arrowhead-primary)"/>
+      <text class="edge-label" x="260" y="130">POST /v1/chat</text>
+
+      <!-- AgentLoop → GeminiClient (PRIMARY) -->
+      <path class="edge primary" id="e-agent-inf"
+            d="M532,82 L555,82" marker-end="url(#arrowhead-primary)"/>
+      <text class="edge-label" x="544" y="75">chat.completions</text>
+
+      <!-- GeminiClient → Gemini external (PRIMARY) -->
+      <path class="edge primary" id="e-inf-gemini"
+            d="M725,78 L782,78" marker-end="url(#arrowhead-primary)"/>
+
+      <!-- GeminiClient → Ollama external (legacy) -->
+      <path class="edge" stroke-dasharray="5 3"
+            d="M640,114 L857,140" marker-end="url(#arrowhead)"/>
+
+      <!-- AgentLoop → Settings -->
+      <path class="edge" d="M452,114 L437,140" marker-end="url(#arrowhead)"/>
+
+      <!-- AgentLoop → WorkspaceScanner -->
+      <path class="edge" d="M532,114 L592,140" marker-end="url(#arrowhead)"/>
+
+      <!-- AgentLoop → ToolRegistry (PRIMARY) -->
+      <path class="edge primary" id="e-agent-reg"
+            d="M452,114 L444,220" marker-end="url(#arrowhead-primary)"/>
+
+      <!-- ToolRegistry → FileTools (PRIMARY) -->
+      <path class="edge primary" id="e-reg-ft"
+            d="M444,276 L449,375" marker-end="url(#arrowhead-primary)"/>
+
+      <!-- ToolRegistry → ExecTools -->
+      <path class="edge" d="M517,276 L622,375" marker-end="url(#arrowhead)"/>
+
+      <!-- SecurityModule → FileTools -->
+      <path class="edge" d="M535,260 L527,375" marker-end="url(#arrowhead)"/>
+
+      <!-- FileTools → Workspace (PRIMARY) -->
+      <path class="edge primary" id="e-ft-ws"
+            d="M449,445 L480,490" marker-end="url(#arrowhead-primary)"/>
+
+      <!-- ExecTools → Workspace -->
+      <path class="edge" d="M622,445 L585,490" marker-end="url(#arrowhead)"/>
+
+      <!-- Workspace → Sessions -->
+      <path class="edge" d="M517,540 L517,570" marker-end="url(#arrowhead)"/>
+
+      <!-- FastAPI → CloudRun -->
+      <path class="edge" stroke-dasharray="4 3"
+            d="M170,186 C400,280 680,270 782,248"
+            marker-end="url(#arrowhead)"/>
+      <text class="edge-label" x="480" y="278">deployed to</text>
+
+      <!-- Settings → GeminiClient -->
+      <path class="edge" d="M502,162 C540,130 580,100 555,82" marker-end="url(#arrowhead)"/>
+
+    </svg>
+
+    <div class="zoom-controls">
+      <button class="zoom-btn" id="zoomIn">+</button>
+      <button class="zoom-btn" id="zoomOut">−</button>
+      <button class="zoom-btn" id="zoomFit" title="Fit">⊡</button>
+    </div>
+  </div>
+
+  <!-- Side Panel -->
+  <aside class="side-panel" id="sidePanel">
+    <div class="side-panel-inner" id="sidePanelContent">
+      <div class="empty-panel" id="emptyState">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <path d="M14 17.5h7M17.5 14v7"/>
+        </svg>
+        <div>Click any component<br>to inspect details</div>
+      </div>
+      <div id="detailContent" hidden></div>
+    </div>
+  </aside>
+</div>
+
+<div class="flow-step-bar" id="flowBar">
+  <span class="flow-label">Flow:</span>
+  <div class="flow-step-dots" id="flowDots"></div>
+  <span class="flow-desc" id="flowDesc"></span>
+  <button class="btn" id="btnFlowPrev">‹</button>
+  <button class="btn" id="btnFlowNext">›</button>
+  <button class="btn" id="btnFlowStop">✕ Exit</button>
+</div>
+
+<script>
+// ── Node data ────────────────────────────────────────────────────────────────
+
+const NODE_DATA = {
+  cli: {
+    label: 'main.py',
+    type: 'CLI Entry',
+    badge: '#58a6ff',
+    files: ['main.py'],
+    description: 'Primary CLI entry point. Parses --model / --path / --verbose flags, constructs InferenceClient, runs the main while-True agent loop. Handles KeyboardInterrupt and EOFError for clean exit.',
+    responsibilities: ['Parse CLI args (--model, --path, --verbose)', 'Build system prompt via scan_workspace_tree()', 'Dispatch tools via execute_tool()', 'Auto-fix loop on execution errors (max 3)', 'Context trim: keeps last 6 exchanges'],
+    deps: [
+      { name: 'config.py', color: '#d2a8ff' },
+      { name: 'core/api_manager.py', color: '#58a6ff' },
+      { name: 'functions/*', color: '#f0883e' },
+      { name: 'ui/display.py', color: '#7ee787' },
+    ],
+    note: 'Active primary entry. `uv run main.py` or `uv run codecrafter`.'
+  },
+  cli2: {
+    label: 'src/cli/main.py',
+    type: 'Refactored CLI (WIP)',
+    badge: '#8b949e',
+    files: ['src/cli/main.py', 'src/cli/display.py', 'src/cli/spinner.py'],
+    description: 'Refactored CLI that consumes AgentLoop (transport-agnostic). Not yet the primary entry point but being developed toward replacing main.py.',
+    responsibilities: ['Consume AgentLoop.run_turn_streaming()', 'Handle terminal display via src/cli/display.py', 'Forward spinner state'],
+    deps: [
+      { name: 'src/core/agent.py', color: '#d2a8ff' },
+      { name: 'src/core/settings.py', color: '#d2a8ff' },
+    ],
+    note: 'Dashed border = not yet primary. Entry: `uv run codecrafter` (pyproject.toml).'
+  },
+  api: {
+    label: 'FastAPI app',
+    type: 'HTTP API Layer',
+    badge: '#7ee787',
+    files: ['src/api/app.py'],
+    description: 'FastAPI application wrapping AgentLoop as REST + SSE endpoints. Deployed to Google Cloud Run. Optionally gated by bearer token (API_TOKEN env var).',
+    responsibilities: ['POST /v1/chat — blocking turn, returns TurnResponse', 'POST /v1/chat/stream — SSE streaming of AgentResponse steps', 'GET /healthz, /readyz — Cloud Run probes', 'CORS middleware (CORS_ORIGINS env var)', 'workspace_dir confined to /tmp on Cloud Run'],
+    deps: [
+      { name: 'src/core/agent.py', color: '#d2a8ff' },
+      { name: 'src/core/api_manager.py (GeminiClient)', color: '#58a6ff' },
+      { name: 'src/core/settings.py', color: '#d2a8ff' },
+      { name: 'FastAPI + uvicorn', color: '#7ee787' },
+    ],
+    note: 'Auth: optional bearer token. Workspace: /tmp only (Cloud Run ephemeral FS).'
+  },
+  agent: {
+    label: 'AgentLoop',
+    type: 'Core Agent',
+    badge: '#d2a8ff',
+    files: ['src/core/agent.py'],
+    description: 'Transport-agnostic agent loop. Knows nothing about terminals or HTTP — yields AgentResponse dataclasses. run_turn_streaming() is a generator; run_turn() collects all steps.',
+    responsibilities: ['Build system prompt with workspace tree', 'Call LLM via OpenAI-compat client (max 25 steps)', 'Dispatch tool calls via ToolRegistry', 'Strip <think> blocks from reasoning models', 'Auto-fix on execution errors (max 3)', 'Code-block detection (forces write_file usage)', 'Yield AgentResponse per step'],
+    deps: [
+      { name: 'src/core/settings.py', color: '#d2a8ff' },
+      { name: 'src/tools/registry.py', color: '#f0883e' },
+      { name: 'src/core/workspace.py', color: '#d2a8ff' },
+      { name: 'openai SDK (OpenAI-compat)', color: '#58a6ff' },
+    ],
+    note: 'MAX_AGENT_STEPS=25. Context trim: last 6 exchanges (CONTEXT_TRIM_THRESHOLD).'
+  },
+  inf: {
+    label: 'GeminiClient',
+    type: 'Inference Client',
+    badge: '#58a6ff',
+    files: ['src/core/api_manager.py', 'core/api_manager.py'],
+    description: 'Wraps OpenAI SDK pointed at Google\'s OpenAI-compatible Gemini endpoint. Manages a fallback model chain. On rate-limit / 503, fallback() advances to next model. reset() called at the start of each user turn.',
+    responsibilities: ['OpenAI(base_url=GEMINI_BASE_URL, api_key=GOOGLE_API_KEY)', 'Model chain: gemini-2.0-flash → gemini-1.5-pro → gemini-2.0-flash-lite', 'fallback() on 429/503/overloaded/rate_limit', 'reset() at start of each user turn', 'OllamaClient alias for legacy CLI (Ollama endpoint)'],
+    deps: [
+      { name: 'openai Python SDK', color: '#58a6ff' },
+      { name: 'src/core/settings.py', color: '#d2a8ff' },
+      { name: 'GOOGLE_API_KEY env var', color: '#ff7b72' },
+    ],
+    note: 'Fallback triggers: "429", "rate_limit", "503", "unavailable", "overloaded".'
+  },
+  settings: {
+    label: 'Settings',
+    type: 'Pydantic Config',
+    badge: '#d2a8ff',
+    files: ['src/core/settings.py', 'config.py', '.env'],
+    description: 'Pydantic BaseSettings singleton. Reads from .env and environment variables. config.py is the flat-module equivalent for the original implementation.',
+    responsibilities: ['GOOGLE_API_KEY, GEMINI_BASE_URL', 'DEFAULT_MODEL, FALLBACK_MODELS, MAX_TOKENS=8192', 'MAX_AGENT_STEPS=25, MAX_AUTO_FIX=3', 'FILE_MUTATING_TOOLS, EXECUTION_ERROR_INDICATORS', 'workspace_dir, sessions_dir (property)'],
+    deps: [
+      { name: 'pydantic-settings', color: '#d2a8ff' },
+      { name: '.env file', color: '#e3b341' },
+    ],
+    note: 'Singleton: `from src.core.settings import settings`. Original: `import config`.'
+  },
+  ws: {
+    label: 'WorkspaceScanner',
+    type: 'Context Builder',
+    badge: '#d2a8ff',
+    files: ['core/workspace.py', 'src/core/workspace.py'],
+    description: 'Walks workspace/ directory and produces a compact tree string injected into the LLM system prompt. Caps at MAX_TREE_ITEMS=50 to prevent context overflow.',
+    responsibilities: ['os.walk() with SKIP_DIRS filter', 'Cap at MAX_TREE_ITEMS=50 lines', 'Include file sizes in bytes', 'Skip .pyc, hidden files, session.json', 'Returns "(empty workspace)" when empty'],
+    deps: [
+      { name: 'config.py (WORKING_DIR, MAX_TREE_ITEMS)', color: '#d2a8ff' },
+    ],
+    note: 'Called before every LLM request to keep workspace context fresh.'
+  },
+  registry: {
+    label: 'ToolRegistry',
+    type: 'Tool Dispatcher',
+    badge: '#d2a8ff',
+    files: ['src/tools/registry.py'],
+    description: 'Auto-discovers all 9 tools, stores their execute functions and JSON schemas. Single execute(name, working_dir, **kwargs) dispatch point.',
+    responsibilities: ['_discover(): lazy-import all 9 tools', 'execute(func_name, working_dir, **kwargs)', 'get_all_schemas() → OpenAI function definitions', 'Error: Unknown function fallback'],
+    deps: [
+      { name: 'src/tools/*.py (9 tools)', color: '#f0883e' },
+    ],
+    note: '9 tools: get_files_info, get_file_content, get_file_outline, write_file, edit_file, delete_file, run_code, run_command, search_files.'
+  },
+  sec: {
+    label: 'PathSecurity',
+    type: 'Security Guard',
+    badge: '#e3b341',
+    files: ['functions/_security.py', 'src/tools/_security.py'],
+    description: 'Validates all file paths stay within workspace/. Uses os.path.realpath() to resolve symlinks before comparison — prevents symlink-escape attacks.',
+    responsibilities: ['validate_path(working_dir, target) → error string or None', 'validate_directory(working_dir, target_dir)', 'validate_working_directory(working_dir)', 'Realpath comparison prevents symlink escape'],
+    deps: [],
+    note: 'Every file-based tool calls validate_path() before touching the filesystem.'
+  },
+  filetools: {
+    label: 'File Tools',
+    type: 'Tool Group',
+    badge: '#f0883e',
+    files: ['functions/write_file.py', 'functions/edit_file.py', 'functions/get_file_content.py', 'functions/get_file_outline.py', 'functions/get_files_info.py', 'functions/delete_file.py', 'functions/search_files.py'],
+    description: 'Seven file-operation tools. Each exports an execute function and a JSON schema dict for OpenAI function calling. All use _security.py for path validation.',
+    responsibilities: ['write_file — create/overwrite a file', 'edit_file — search-and-replace (returns diff)', 'get_file_content — read with optional line ranges', 'get_file_outline — structural summary (AST-like)', 'get_files_info — directory listing', 'delete_file — remove a file', 'search_files — grep-like pattern search'],
+    deps: [
+      { name: 'functions/_security.py', color: '#e3b341' },
+    ],
+    note: 'Schemas sent to LLM as OpenAI function definitions (schema_* exports).'
+  },
+  exectools: {
+    label: 'Exec Tools',
+    type: 'Tool Group',
+    badge: '#f0883e',
+    files: ['functions/run_code.py', 'functions/run_command.py'],
+    description: 'Code execution and shell command tools. run_code auto-detects language from file extension. Output triggers auto-fix loop in AgentLoop if error indicators are present.',
+    responsibilities: ['run_code — execute files in 15+ languages', 'run_command — shell command in workspace/', 'Auto-language detection by extension', 'Output errors trigger auto-fix (max 3 retries)', 'Timeout detection (not auto-fixable)'],
+    deps: [
+      { name: 'functions/_security.py', color: '#e3b341' },
+      { name: 'subprocess', color: '#8b949e' },
+    ],
+    note: 'Error indicators checked: Traceback, SyntaxError, TypeError, EXIT CODE 1/2, etc.'
+  },
+  fss: {
+    label: 'workspace/ sandbox',
+    type: 'File System',
+    badge: '#e3b341',
+    files: ['workspace/'],
+    description: 'Sandboxed directory for all user-generated files. All tool operations are path-traversal protected via _security.py. Defaults to ./workspace/, overridable via --path or CODECRAFTER_WORKING_DIR.',
+    responsibilities: ['Sandboxed root for all file ops', 'Path traversal protection via realpath()', 'Overridable: --path flag or CODECRAFTER_WORKING_DIR env', 'On Cloud Run: must be under /tmp (ephemeral)'],
+    deps: [],
+    note: 'Contents injected into every LLM prompt via WorkspaceScanner.'
+  },
+  sessions: {
+    label: 'sessions/ store',
+    type: 'Persistence',
+    badge: '#e3b341',
+    files: ['sessions/', 'src/sessions/manager.py'],
+    description: 'JSON files storing conversation history per session. Named by timestamp. src/sessions/manager.py handles persistence in the refactored stack.',
+    responsibilities: ['Per-session conversation JSON', 'Timestamp-based filenames', 'src/sessions/manager.py: read/write sessions'],
+    deps: [],
+    note: 'Trimmed to last 6 exchanges in memory (CONTEXT_TRIM_THRESHOLD=6).'
+  },
+  gemini: {
+    label: 'Google Gemini API',
+    type: 'External LLM',
+    badge: '#ff7b72',
+    files: [],
+    description: 'Google Gemini accessed via OpenAI-compatible endpoint. Primary LLM backend for the refactored stack and Cloud Run deployment.',
+    responsibilities: ['generativelanguage.googleapis.com/v1beta/openai/', 'Models: gemini-2.0-flash, gemini-1.5-pro, gemini-2.0-flash-lite', 'OpenAI-compatible /chat/completions', 'Tool/function calling support required'],
+    deps: [
+      { name: 'GOOGLE_API_KEY', color: '#ff7b72' },
+    ],
+    note: 'Auth: GOOGLE_API_KEY env var. On Cloud Run: Secret Manager.'
+  },
+  ollama: {
+    label: 'Ollama (legacy)',
+    type: 'External LLM',
+    badge: '#484f58',
+    files: ['core/api_manager.py'],
+    description: 'Ollama local LLM server used by the original main.py. OpenAI-compatible at localhost:11434. Still referenced via OllamaClient alias in src/core/api_manager.py.',
+    responsibilities: ['localhost:11434/v1 (default)', 'Models: gemini-1.5-pro, gemini-1.5-flash, gemini-2.0-flash-exp via proxy', 'OllamaClient alias in refactored api_manager'],
+    deps: [
+      { name: 'ollama serve (local process)', color: '#ff7b72' },
+    ],
+    note: 'Dashed: legacy path. config.py still references OLLAMA_BASE_URL.'
+  },
+  cloudrun: {
+    label: 'Google Cloud Run',
+    type: 'Deployment',
+    badge: '#ff7b72',
+    files: ['Dockerfile', 'cloudbuild.yaml', 'DEPLOY.md'],
+    description: 'Containerized deployment target for the FastAPI backend. Dockerfile builds the image; cloudbuild.yaml automates build/push/deploy. Ephemeral filesystem — workspace must use /tmp.',
+    responsibilities: ['Containerized FastAPI (uvicorn)', 'cloudbuild.yaml: automated CI/CD', '/healthz + /readyz probes', 'GOOGLE_API_KEY via Secret Manager', 'CORS_ORIGINS, API_TOKEN env vars'],
+    deps: [
+      { name: 'Dockerfile', color: '#ff7b72' },
+      { name: 'cloudbuild.yaml', color: '#ff7b72' },
+      { name: 'Google Secret Manager', color: '#ff7b72' },
+    ],
+    note: 'workspace_dir enforced under /tmp on Cloud Run (ephemeral container FS).'
+  },
+};
+
+// ── Flow steps ────────────────────────────────────────────────────────────────
+
+const FLOW_STEPS = [
+  {
+    desc: '① User types a prompt in the terminal',
+    highlight: ['n-cli'],
+    edges: [],
+  },
+  {
+    desc: '② main.py builds system prompt (workspace tree) and appends user message to history',
+    highlight: ['n-cli', 'n-ws'],
+    edges: ['e-cli-agent'],
+  },
+  {
+    desc: '③ AgentLoop calls GeminiClient.chat_completion() with messages + tool schemas',
+    highlight: ['n-cli', 'n-agent', 'n-inf'],
+    edges: ['e-cli-agent', 'e-agent-inf'],
+  },
+  {
+    desc: '④ GeminiClient sends request to Google Gemini API (OpenAI-compat endpoint)',
+    highlight: ['n-inf', 'n-gemini'],
+    edges: ['e-agent-inf', 'e-inf-gemini'],
+  },
+  {
+    desc: '⑤ Gemini returns tool_calls → AgentLoop dispatches via ToolRegistry',
+    highlight: ['n-agent', 'n-registry'],
+    edges: ['e-cli-agent', 'e-agent-reg'],
+  },
+  {
+    desc: '⑥ ToolRegistry routes to FileTools or ExecTools; PathSecurity validates all paths',
+    highlight: ['n-registry', 'n-filetools', 'n-exectools', 'n-sec'],
+    edges: ['e-reg-ft', 'e-agent-reg'],
+  },
+  {
+    desc: '⑦ Tool operates on workspace/ (sandboxed). Exec errors trigger auto-fix (max 3×)',
+    highlight: ['n-filetools', 'n-fss'],
+    edges: ['e-ft-ws'],
+  },
+  {
+    desc: '⑧ Tool result fed back to Gemini as "tool" role message → loop continues',
+    highlight: ['n-agent', 'n-inf', 'n-gemini'],
+    edges: ['e-agent-inf', 'e-inf-gemini'],
+  },
+  {
+    desc: '⑨ Final text response returned; context trimmed to last 6 exchanges',
+    highlight: ['n-cli', 'n-sessions'],
+    edges: ['e-cli-agent'],
+  },
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let flowMode = false;
+let flowStep = 0;
+let selectedNode = null;
+let panX = 0, panY = 0, zoom = 1;
+let isPanning = false, lastMX = 0, lastMY = 0;
+
+const svg = document.getElementById('arch');
+const wrap = document.getElementById('diagramWrap');
+const sidePanel = document.getElementById('sidePanel');
+const sidePanelContent = document.getElementById('sidePanelContent');
+const emptyState = document.getElementById('emptyState');
+const detailContent = document.getElementById('detailContent');
+const flowBar = document.getElementById('flowBar');
+const flowDots = document.getElementById('flowDots');
+const flowDesc = document.getElementById('flowDesc');
+
+// ── Pan / Zoom ─────────────────────────────────────────────────────────────────
+
+function applyTransform() {
+  const g = svg.querySelector('#transformGroup');
+  if (g) g.setAttribute('transform', `translate(${panX},${panY}) scale(${zoom})`);
+}
+
+function wrapSVGContent() {
+  const children = Array.from(svg.children).filter(el => el.tagName !== 'defs');
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.id = 'transformGroup';
+  children.forEach(c => g.appendChild(c));
+  svg.appendChild(g);
+}
+wrapSVGContent();
+
+wrap.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  isPanning = true;
+  lastMX = e.clientX; lastMY = e.clientY;
+  wrap.classList.add('grabbing');
+});
+window.addEventListener('mousemove', e => {
+  if (!isPanning) return;
+  panX += e.clientX - lastMX;
+  panY += e.clientY - lastMY;
+  lastMX = e.clientX; lastMY = e.clientY;
+  applyTransform();
+});
+window.addEventListener('mouseup', () => {
+  isPanning = false;
+  wrap.classList.remove('grabbing');
+});
+
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.91;
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  panX = mx - (mx - panX) * factor;
+  panY = my - (my - panY) * factor;
+  zoom = Math.max(0.25, Math.min(3, zoom * factor));
+  applyTransform();
+}, { passive: false });
+
+// Touch pan
+let lastTouches = [];
+wrap.addEventListener('touchstart', e => { lastTouches = Array.from(e.touches); });
+wrap.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1 && lastTouches.length === 1) {
+    panX += e.touches[0].clientX - lastTouches[0].clientX;
+    panY += e.touches[0].clientY - lastTouches[0].clientY;
+    applyTransform();
+  }
+  lastTouches = Array.from(e.touches);
+}, { passive: false });
+
+document.getElementById('zoomIn').onclick = () => {
+  zoom = Math.min(3, zoom * 1.2); applyTransform();
+};
+document.getElementById('zoomOut').onclick = () => {
+  zoom = Math.max(0.25, zoom / 1.2); applyTransform();
+};
+document.getElementById('zoomFit').onclick = () => {
+  zoom = 1; panX = 0; panY = 0; applyTransform();
+};
+document.getElementById('btnReset').onclick = () => {
+  zoom = 1; panX = 0; panY = 0; applyTransform();
+  exitFlow();
+  clearSelection();
+};
+
+// ── Side panel ─────────────────────────────────────────────────────────────────
+
+function showDetail(id) {
+  const d = NODE_DATA[id];
+  if (!d) return;
+  emptyState.hidden = true;
+  detailContent.hidden = false;
+  detailContent.innerHTML = `
+    <div class="panel-title">
+      ${d.label}
+      <span class="panel-badge" style="background:${d.badge}22;color:${d.badge};border:1px solid ${d.badge}44;">${d.type}</span>
+    </div>
+    <div class="panel-subtitle">${(d.files.length ? d.files[0] : '')}</div>
+    <div class="panel-section">
+      <div class="panel-section-label">Description</div>
+      <p>${d.description}</p>
+    </div>
+    ${d.responsibilities.length ? `
+    <div class="panel-section">
+      <div class="panel-section-label">Responsibilities</div>
+      <div class="pill-list">${d.responsibilities.map(r => `<span class="pill">${r}</span>`).join('')}</div>
+    </div>` : ''}
+    ${d.deps.length ? `
+    <div class="panel-section">
+      <div class="panel-section-label">Dependencies</div>
+      ${d.deps.map(dep => `<div class="dep-item"><div class="dep-dot" style="background:${dep.color}"></div>${dep.name}</div>`).join('')}
+    </div>` : ''}
+    ${d.files.length > 1 ? `
+    <div class="panel-section">
+      <div class="panel-section-label">Files</div>
+      ${d.files.map(f => `<span class="file-tag">${f}</span>`).join('')}
+    </div>` : ''}
+    ${d.note ? `
+    <div class="panel-section">
+      <div class="panel-section-label">Note</div>
+      <p>${d.note}</p>
+    </div>` : ''}
+  `;
+}
+
+function clearSelection() {
+  selectedNode = null;
+  emptyState.hidden = false;
+  detailContent.hidden = true;
+  document.querySelectorAll('.node-group').forEach(g => {
+    g.classList.remove('highlighted', 'dimmed');
+  });
+  document.querySelectorAll('.edge').forEach(e => {
+    e.classList.remove('highlighted', 'dimmed');
+  });
+}
+
+// ── Node interactions ──────────────────────────────────────────────────────────
+
+// Adjacency map (bidirectional for hover highlighting)
+const ADJACENCY = {
+  cli:      ['agent', 'ws', 'settings'],
+  cli2:     ['agent'],
+  api:      ['agent', 'cloudrun'],
+  agent:    ['inf', 'registry', 'ws', 'settings'],
+  inf:      ['gemini', 'ollama', 'settings'],
+  settings: ['agent', 'inf'],
+  ws:       ['agent', 'fss'],
+  registry: ['filetools', 'exectools', 'sec'],
+  sec:      ['filetools', 'exectools'],
+  filetools:['fss', 'sec', 'registry'],
+  exectools:['fss', 'sec', 'registry'],
+  fss:      ['sessions', 'filetools', 'exectools', 'ws'],
+  sessions: ['fss'],
+  gemini:   ['inf'],
+  ollama:   ['inf'],
+  cloudrun: ['api'],
+};
+
+document.querySelectorAll('.node-group').forEach(g => {
+  g.addEventListener('click', e => {
+    e.stopPropagation();
+    if (flowMode) return;
+    const id = g.dataset.id;
+    if (selectedNode === id) { clearSelection(); return; }
+    selectedNode = id;
+
+    const related = new Set([id, ...(ADJACENCY[id] || [])]);
+    document.querySelectorAll('.node-group').forEach(n => {
+      n.classList.toggle('dimmed', !related.has(n.dataset.id));
+      n.classList.toggle('highlighted', n.dataset.id === id);
+    });
+    document.querySelectorAll('.edge').forEach(ed => {
+      const isRelated = Array.from(ed.classList).some(c => c.includes('primary') || c.includes('highlighted'));
+      ed.classList.add('dimmed');
+    });
+
+    showDetail(id);
+    if (window.innerWidth <= 700) {
+      sidePanel.classList.add('mobile-open');
+    }
+  });
+});
+
+wrap.addEventListener('click', e => {
+  if (e.target === wrap || e.target === svg) clearSelection();
+});
+
+// ── Flow mode ──────────────────────────────────────────────────────────────────
+
+function buildFlowDots() {
+  flowDots.innerHTML = '';
+  FLOW_STEPS.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'flow-dot';
+    d.onclick = () => goToFlowStep(i);
+    flowDots.appendChild(d);
+  });
+}
+
+function updateFlowDots() {
+  flowDots.querySelectorAll('.flow-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === flowStep);
+    d.classList.toggle('done', i < flowStep);
+  });
+}
+
+function applyFlowStep(step) {
+  const s = FLOW_STEPS[step];
+  flowDesc.textContent = s.desc;
+
+  const highlighted = new Set(s.highlight.map(id => id.replace('n-', '')));
+  document.querySelectorAll('.node-group').forEach(n => {
+    n.classList.toggle('highlighted', highlighted.has(n.dataset.id));
+    n.classList.toggle('dimmed', !highlighted.has(n.dataset.id));
+  });
+
+  document.querySelectorAll('.edge').forEach(ed => {
+    ed.classList.remove('highlighted');
+    ed.classList.add('dimmed');
+  });
+  s.edges.forEach(eid => {
+    const el = document.getElementById(eid);
+    if (el) { el.classList.remove('dimmed'); el.classList.add('highlighted'); }
+  });
+
+  // Show detail for first highlighted node
+  if (s.highlight.length > 0) {
+    const id = s.highlight[0].replace('n-', '');
+    showDetail(id);
+  }
+  updateFlowDots();
+}
+
+function goToFlowStep(n) {
+  flowStep = Math.max(0, Math.min(FLOW_STEPS.length - 1, n));
+  applyFlowStep(flowStep);
+}
+
+function enterFlow() {
+  flowMode = true;
+  flowStep = 0;
+  flowBar.classList.add('visible');
+  document.getElementById('btnFlow').textContent = '◼ Stop Flow';
+  document.getElementById('btnFlow').classList.add('active');
+  buildFlowDots();
+  applyFlowStep(0);
+}
+
+function exitFlow() {
+  flowMode = false;
+  flowBar.classList.remove('visible');
+  document.getElementById('btnFlow').textContent = '▶ Trace Flow';
+  document.getElementById('btnFlow').classList.remove('active');
+  clearSelection();
+}
+
+document.getElementById('btnFlow').onclick = () => flowMode ? exitFlow() : enterFlow();
+document.getElementById('btnFlowNext').onclick = () => goToFlowStep(flowStep + 1);
+document.getElementById('btnFlowPrev').onclick = () => goToFlowStep(flowStep - 1);
+document.getElementById('btnFlowStop').onclick = exitFlow;
+
+// Keyboard
+window.addEventListener('keydown', e => {
+  if (flowMode) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goToFlowStep(flowStep + 1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') goToFlowStep(flowStep - 1);
+    if (e.key === 'Escape') exitFlow();
+  } else {
+    if (e.key === 'Escape') clearSelection();
+  }
+});
+
+// ── Panel toggle ───────────────────────────────────────────────────────────────
+
+let panelOpen = true;
+document.getElementById('btnPanel').onclick = () => {
+  panelOpen = !panelOpen;
+  sidePanel.classList.toggle('collapsed', !panelOpen);
+  document.getElementById('btnPanel').textContent = panelOpen ? 'Hide Panel' : 'Show Panel';
+};
+
+// ── Theme color fix: replace CSS var refs in SVG fills ────────────────────────
+// SVG fill="var(...)" doesn't work cross-browser; compute and apply on load.
+
+function resolveColor(varName) {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+function applySVGColors() {
+  const colorMap = {
+    'var(--node-cli)':  resolveColor('--node-cli'),
+    'var(--node-api)':  resolveColor('--node-api'),
+    'var(--node-core)': resolveColor('--node-core'),
+    'var(--node-tool)': resolveColor('--node-tool'),
+    'var(--node-ext)':  resolveColor('--node-ext'),
+    'var(--node-sec)':  resolveColor('--node-sec'),
+    'var(--border-hi)': resolveColor('--border-hi'),
+    'var(--flow-color)':resolveColor('--flow-color'),
+  };
+  document.querySelectorAll('.node-bg').forEach(r => {
+    const fill = r.getAttribute('fill');
+    if (colorMap[fill]) r.setAttribute('fill', colorMap[fill]);
+  });
+  document.querySelectorAll('.edge.primary').forEach(e => {
+    e.setAttribute('stroke', colorMap['var(--flow-color)'] || '#58a6ff');
+  });
+  // Fix arrowhead colors
+  document.querySelectorAll('marker polygon').forEach(p => {
+    const fill = p.getAttribute('fill');
+    if (colorMap[fill]) p.setAttribute('fill', colorMap[fill]);
+  });
+}
+applySVGColors();
+
+// Re-apply if system theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applySVGColors);
+</script>

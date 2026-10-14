@@ -1,32 +1,27 @@
-import os
+"""Tool: delete_file — delete a file within the workspace boundary."""
 
-from src.tools._security import validate_path
+from __future__ import annotations
+
+from pathlib import Path
+
+from src.workspace.base import Workspace
+from src.workspace.local import LocalWorkspace
 
 
-def delete_file(working_directory, file_path):
-    """
-    Safely deletes a file within the given working directory.
-    Validates that the target file is within scope, exists, and is deletable.
-    """
-    err = validate_path(working_directory, file_path)
-    if err:
-        return err
-
-    target_file_abs = os.path.realpath(os.path.join(working_directory, file_path))
-
-    if not os.path.exists(target_file_abs):
-        return f'Error: File "{file_path}" not found.'
-
-    if not os.path.isfile(target_file_abs):
-        return f'Error: "{file_path}" is not a file and cannot be deleted.'
+async def delete_file(
+    workspace: Workspace | Path | str,
+    file_path: str,
+) -> str:
+    """Safely deletes a file within the workspace."""
+    if isinstance(workspace, (str, Path)):
+        ws: Workspace = LocalWorkspace(workspace_id="local", root_dir=workspace)
+    else:
+        ws = workspace
 
     try:
-        os.remove(target_file_abs)
-        return f'Successfully deleted "{file_path}".'
-    except PermissionError:
-        return f'Error: Permission denied while deleting "{file_path}".'
+        return await ws.delete_file(file_path)
     except Exception as e:
-        return f'Error deleting "{file_path}": {e}'
+        return f"Error deleting '{file_path}': {e}"
 
 
 schema_delete_file = {

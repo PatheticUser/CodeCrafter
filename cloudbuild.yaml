@@ -1,0 +1,71 @@
+# Cloud Build CI/CD pipeline for CodeCrafter on Google Cloud Run.
+#
+# Trigger: push to `main` branch (configure in Cloud Build console or via gcloud).
+# Substitutions (set in trigger config):
+#   _REGION       — Cloud Run region, e.g. us-central1
+#   _SERVICE      — Cloud Run service name, e.g. codecrafter
+#   _PROJECT      — GCP project ID
+
+substitutions:
+  _REGION: us-central1
+  _SERVICE: codecrafter
+  _PROJECT: ${PROJECT_ID}   # Cloud Build injects PROJECT_ID automatically
+
+options:
+  # Use a faster machine for builds with large dependency layers.
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  # ── 1. Build ─────────────────────────────────────────────────────────────
+  - name: gcr.io/cloud-builders/docker
+    id: build
+    args:
+      - build
+      - --tag=us-docker.pkg.dev/$_PROJECT/codecrafter/$_SERVICE:$SHORT_SHA
+      - --tag=us-docker.pkg.dev/$_PROJECT/codecrafter/$_SERVICE:latest
+      # BuildKit cache — pulls the previous layer cache from Artifact Registry.
+      - --cache-from=us-docker.pkg.dev/$_PROJECT/codecrafter/$_SERVICE:latest
+      - --build-arg=BUILDKIT_INLINE_CACHE=1
+      - .
+    env:
+      - DOCKER_BUILDKIT=1
+
+  # ── 2. Push to Artifact Registry ─────────────────────────────────────────
+  - name: gcr.io/cloud-builders/docker
+    id: push
+    args:
+      - push
+      - --all-tags
+      - us-docker.pkg.dev/$_PROJECT/codecrafter/$_SERVICE
+    waitFor: [build]
+
+  # ── 3. Deploy to Cloud Run ───────────────────────────────────────────────
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    id: deploy
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - $_SERVICE
+      - --image=us-docker.pkg.dev/$_PROJECT/codecrafter/$_SERVICE:$SHORT_SHA
+      - --region=$_REGION
+      - --platform=managed
+      # No unauthenticated access — use IAM or an API token (API_TOKEN env var)
+      - --no-allow-unauthenticated
+      # Secret Manager: mounts GOOGLE_API_KEY without baking it into the image.
+      - --set-secrets=GOOGLE_API_KEY=GOOGLE_API_KEY:latest
+      # Scale to zero when idle; spin up fast on request.
+      - --min-instances=0
+      - --max-instances=10
+      - --concurrency=80
+      - --cpu=1
+      - --memory=512Mi
+      # 5-minute request timeout — generous for long agent turns.
+      - --timeout=300
+      - --set-env-vars=APP_ENV=production
+    waitFor: [push]
+
+images:
+  - us-docker.pkg.dev/$_PROJECT/codecrafter/$_SERVICE:$SHORT_SHA
+  - us-docker.pkg.dev/$_PROJECT/codecrafter/$_SERVICE:latest

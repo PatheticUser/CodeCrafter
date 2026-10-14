@@ -1,13 +1,12 @@
-"""Core modules: settings, API client, workspace scanner, agent loop."""
+"""Core package symbols."""
 
-from src.core.agent import AgentLoop
-from src.core.api_manager import OllamaClient
+from src.core.agent import CodingAgent
+from src.core.events import AgentEvent, EventType
 from src.core.settings import settings
-from src.core.workspace import scan_workspace_tree
 
 __all__ = [
+    "CodingAgent",
+    "AgentEvent",
+    "EventType",
     "settings",
-    "OllamaClient",
-    "scan_workspace_tree",
-    "AgentLoop",
 ]

@@ -1,0 +1,40 @@
+# Exclude from Docker build context — keeps builds fast and image lean.
+
+.git/
+.gitignore
+
+# Python artifacts
+__pycache__/
+*.py[oc]
+*.egg-info/
+dist/
+build/
+
+# Local venv (image builds its own)
+.venv/
+venv/
+
+# Secrets — never bake into image; inject via Cloud Run env or Secret Manager
+.env
+.env.*
+!.env.example
+
+# Dev tooling
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Not needed at runtime
+DESIGN.md
+README.md
+Landing-Page/
+sessions/
+tests/
+workspace/

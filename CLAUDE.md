@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CodeCrafter is an educational AI coding agent that runs in your terminal. It connects to Ollama for LLM inference, using an OpenAI-compatible API. The agent can read, write, edit, and execute code in a sandboxed `workspace/` directory.
+CodeCrafter is an AI coding agent with a FastAPI backend and Next.js frontend. It connects to any OpenAI-compatible external LLM API. The agent can read, write, edit, and execute code in a sandboxed workspace (local or Docker-isolated). A terminal CLI mode is also available.
 
 ## Commands
 
@@ -63,7 +63,7 @@ The refactored code is **not the primary entry point** but is being developed to
 ## Key Patterns
 
 - **Agent loop**: LLM receives system prompt + conversation history → responds with tool calls or text → tool results fed back → repeat until final text response or max steps (25).
-- **Model fallback**: On rate-limit/overload errors, `InferenceClient`/`OllamaClient` tries the next model in `FALLBACK_MODELS` chain.
+- **LLM provider retries**: On rate-limit/transient server errors, `OpenAICompatibleProvider` retries with exponential backoff and jitter (configurable model via `LLM_MODEL`).
 - **Auto-fix**: When `run_code` or `run_command` produces an execution error (Traceback, SyntaxError, etc.), the agent injects a corrective user message and retries (up to 3 times).
 - **Tool schemas**: Each tool in `functions/` or `src/tools/` defines a JSON schema (`schema_*`) that gets sent to the LLM as OpenAI-compatible function definitions.
 - **Workspace confinement**: All file operations are restricted to `workspace/` with path traversal protection in `_security.py`.

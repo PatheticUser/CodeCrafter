@@ -1,99 +1,45 @@
-import os
-import re
+"""Tool: search_files — grep-like pattern search in workspace."""
 
-from src.tools._security import validate_directory
+from __future__ import annotations
+
+from pathlib import Path
+
+from src.workspace.base import Workspace
+from src.workspace.local import LocalWorkspace
 
 
-def search_files(
-    working_directory, pattern, directory=".", file_extension=None, case_sensitive=False
-):
-    """
-    Search through workspace files for a text pattern. Returns matching lines
-    with file paths and line numbers, capped at 50 results.
-    """
-    err = validate_directory(working_directory, directory)
-    if err:
-        return err
+async def search_files(
+    workspace: Workspace | Path | str,
+    pattern: str,
+    directory: str = ".",
+    file_extension: str | None = None,
+    case_sensitive: bool = False,
+) -> str:
+    """Search through workspace files for a text or regex pattern."""
+    if isinstance(workspace, (str, Path)):
+        ws: Workspace = LocalWorkspace(workspace_id="local", root_dir=workspace)
+    else:
+        ws = workspace
 
-    working_dir_abs = os.path.realpath(working_directory)
-    search_dir = os.path.realpath(os.path.join(working_directory, directory))
-
-    if not os.path.isdir(search_dir):
-        return f'Error: Directory not found: "{directory}"'
-
-    flags = 0 if case_sensitive else re.IGNORECASE
     try:
-        regex = re.compile(pattern, flags)
-    except re.error:
-        regex = re.compile(re.escape(pattern), flags)
-
-    matches = []
-    skip_dirs = {".git", "__pycache__", "node_modules", ".venv", "venv", ".env"}
-    binary_exts = {
-        ".pyc", ".pyo", ".exe", ".dll", ".so", ".dylib", ".o", ".obj",
-        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg",
-        ".zip", ".tar", ".gz", ".rar", ".7z", ".pdf",
-        ".doc", ".docx", ".xls", ".xlsx", ".mp3", ".mp4",
-        ".avi", ".mov", ".wav", ".woff", ".woff2", ".ttf", ".eot",
-        ".lock", ".map",
-    }
-
-    for root, dirs, files in os.walk(search_dir):
-        dirs[:] = [d for d in dirs if d not in skip_dirs and not d.startswith(".")]
-
-        for fname in sorted(files):
-            _, ext = os.path.splitext(fname)
-            if ext.lower() in binary_exts:
-                continue
-            if file_extension and ext.lower() != file_extension.lower():
-                continue
-
-            file_path = os.path.join(root, fname)
-            relative_path = os.path.relpath(file_path, working_dir_abs)
-
-            try:
-                with open(file_path, encoding="utf-8", errors="ignore") as f:
-                    for line_num, line in enumerate(f, 1):
-                        if regex.search(line):
-                            line_preview = line.rstrip()
-                            if len(line_preview) > 150:
-                                line_preview = line_preview[:150] + "..."
-                            matches.append(
-                                {
-                                    "file": relative_path,
-                                    "line": line_num,
-                                    "content": line_preview,
-                                }
-                            )
-                            if len(matches) >= 50:
-                                break
-            except Exception:
-                continue
-            if len(matches) >= 50:
-                break
-        if len(matches) >= 50:
-            break
-
-    if not matches:
-        scope = f' in "{directory}"' if directory != "." else ""
-        ext_note = f" (filtered to {file_extension})" if file_extension else ""
-        return f'No matches found for "{pattern}"{scope}{ext_note}'
-
-    output_lines = [f'Found {len(matches)} match(es) for "{pattern}":\n']
-    for m in matches:
-        output_lines.append(f"  {m['file']}:{m['line']}  {m['content']}")
-
-    if len(matches) == 50:
-        output_lines.append("\n  ... (results capped at 50 matches)")
-
-    return "\n".join(output_lines)
+        return await ws.search_files(
+            pattern=pattern,
+            directory=directory,
+            file_extension=file_extension,
+            case_sensitive=case_sensitive,
+        )
+    except Exception as e:
+        return f"Error searching files for '{pattern}': {e}"
 
 
 schema_search_files = {
     "type": "function",
     "function": {
         "name": "search_files",
-        "description": "Search files for a pattern (grep). Returns file:line matches, capped at 50. Supports regex and extension filter.",
+        "description": (
+            "Search files for a pattern (grep). Returns file:line matches, capped at 50. "
+            "Supports regex and extension filter."
+        ),
         "parameters": {
             "type": "object",
             "properties": {

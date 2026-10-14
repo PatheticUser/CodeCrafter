@@ -1,7 +1,7 @@
-"""Core modules for CodeCrafter."""
+"""Backwards compatibility shim for legacy core imports."""
 
-from .api_client import InferenceClient
-from .api_manager import OllamaClient
-from .workspace import scan_workspace_tree
+from src.core.agent import CodingAgent
+from src.core.settings import settings
+from src.workspace.local import LocalWorkspace
 
-__all__ = ["InferenceClient", "OllamaClient", "scan_workspace_tree"]
+__all__ = ["CodingAgent", "settings", "LocalWorkspace"]

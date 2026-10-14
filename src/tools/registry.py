@@ -1,19 +1,17 @@
-"""Tool registry — auto-discovers and provides a clean interface for tools."""
+"""Tool registry — discovers canonical tools and dispatches execution against Workspace."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
+
+from src.workspace.base import Workspace
+from src.workspace.local import LocalWorkspace
 
 
 class ToolRegistry:
-    """Registry that auto-discovers tool functions and provides a clean interface.
-
-    Usage:
-        registry = ToolRegistry()
-        result = registry.execute("write_file", working_dir, file_path="foo.txt", content="hello")
-        schemas = registry.get_all_schemas()
-    """
+    """Registry providing tool schemas and executing tools against a Workspace."""
 
     def __init__(self):
         self._tools: dict[str, Callable] = {}
@@ -21,8 +19,7 @@ class ToolRegistry:
         self._discover()
 
     def _discover(self):
-        """Discover all available tools and their schemas."""
-        # Lazy imports to avoid circular dependencies
+        """Register all 9 canonical tools."""
         from src.tools.delete_file import delete_file, schema_delete_file
         from src.tools.edit_file import edit_file, schema_edit_file
         from src.tools.get_file_content import get_file_content, schema_get_file_content
@@ -49,22 +46,27 @@ class ToolRegistry:
             self._tools[name] = func
             self._schemas.append(schema)
 
-    def execute(self, func_name: str, working_dir: str, **kwargs) -> str:
-        """Execute a tool by name with given arguments.
-
-        Args:
-            func_name: The name of the tool to execute.
-            working_dir: The sandboxed working directory.
-            **kwargs: Arguments to pass to the tool function.
-
-        Returns:
-            The result string from the tool.
-        """
+    async def execute(
+        self, func_name: str, workspace_or_dir: Workspace | Path | str, **kwargs
+    ) -> Any:
+        """Execute a tool asynchronously against a Workspace."""
         if func_name not in self._tools:
-            return f"Error: Unknown function {func_name}"
+            return f"Error: Unknown function '{func_name}'"
+
+        if isinstance(workspace_or_dir, (str, Path)):
+            workspace: Workspace = LocalWorkspace(workspace_id="local", root_dir=workspace_or_dir)
+        else:
+            workspace = workspace_or_dir
 
         try:
-            return self._tools[func_name](working_dir, **kwargs)
+            func = self._tools[func_name]
+            # Handle both async and sync tools
+            import inspect
+
+            if inspect.iscoroutinefunction(func):
+                return await func(workspace, **kwargs)
+            else:
+                return func(workspace, **kwargs)
         except Exception as e:
             return f"ERROR executing {func_name}: {e}"
 
@@ -73,7 +75,6 @@ class ToolRegistry:
         return list(self._schemas)
 
     def get_tool_names(self) -> list[str]:
-        """Return all registered tool names."""
         return list(self._tools.keys())
 
     def __contains__(self, name: str) -> bool:

@@ -1,62 +1,39 @@
-import os
+"""Tool: get_file_content — read file contents with line range support."""
 
-from src.tools._security import validate_path
+from __future__ import annotations
+
+from pathlib import Path
+
+from src.workspace.base import Workspace
+from src.workspace.local import LocalWorkspace
 
 
-def get_file_content(working_directory, file_path, start_line=None, end_line=None):
-    """
-    Reads a file within the working_directory safely.
-    Supports reading specific line ranges for token efficiency.
-    """
-    err = validate_path(working_directory, file_path)
-    if err:
-        return err
-
-    target_file_abs = os.path.realpath(os.path.join(working_directory, file_path))
-
-    if not os.path.isfile(target_file_abs):
-        return f'Error: File not found: "{file_path}"'
+async def get_file_content(
+    workspace: Workspace | Path | str,
+    file_path: str,
+    start_line: int | None = None,
+    end_line: int | None = None,
+) -> str:
+    """Read a file within the workspace safely."""
+    if isinstance(workspace, (str, Path)):
+        ws: Workspace = LocalWorkspace(workspace_id="local", root_dir=workspace)
+    else:
+        ws = workspace
 
     try:
-        with open(target_file_abs, encoding="utf-8", errors="ignore") as f:
-            lines = f.readlines()
+        return await ws.read_file(file_path, start_line=start_line, end_line=end_line)
     except Exception as e:
         return f"Error: {e}"
-
-    total_lines = len(lines)
-
-    if start_line is not None or end_line is not None:
-        s = max(1, start_line or 1)
-        e = min(total_lines, end_line or total_lines)
-        if s > total_lines:
-            return f"Error: start_line {s} exceeds file length ({total_lines} lines)"
-        selected = lines[s - 1 : e]
-        header = f"[{file_path} \u2014 lines {s}-{e} of {total_lines}]\n"
-        numbered = "".join(f"L{i}: {line}" for i, line in enumerate(selected, s))
-        return header + numbered
-
-    if total_lines <= 300:
-        return f"[{file_path} \u2014 {total_lines} lines]\n" + "".join(lines)
-
-    head = "".join(f"L{i}: {line}" for i, line in enumerate(lines[:50], 1))
-    tail = "".join(
-        f"L{i}: {line}" for i, line in enumerate(lines[-20:], total_lines - 19)
-    )
-    hint = (
-        f"\n\n... ({total_lines - 70} lines omitted) ...\n\n"
-        f"File has {total_lines} lines. Use start_line/end_line to read specific sections, "
-        f"or use get_file_outline to see the file structure.\n\n"
-    )
-    return (
-        f"[{file_path} \u2014 {total_lines} lines (showing head + tail)]\n{head}{hint}{tail}"
-    )
 
 
 schema_get_file_content = {
     "type": "function",
     "function": {
         "name": "get_file_content",
-        "description": "Read a file. Small files (<300 lines) return fully. Large files show head+tail with line ranges.",
+        "description": (
+            "Read a file. Small files (<300 lines) return fully. "
+            "Large files show head+tail with line ranges."
+        ),
         "parameters": {
             "type": "object",
             "properties": {

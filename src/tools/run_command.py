@@ -1,85 +1,27 @@
-import os
-import re
-import subprocess
+"""Tool: run_command — execute shell command inside workspace."""
 
-BLOCKED_PATTERNS = [
-    r"rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?/",
-    r"del\s+/[sS]\s+/[qQ]\s+[A-Za-z]:\\",
-    r"rmdir\s+/[sS]\s+/[qQ]\s+[A-Za-z]:\\",
-    r"format\s+[A-Za-z]:",
-    r"mkfs\b",
-    r"dd\s+if=",
-    r":\(\)\s*\{\s*:\|:\s*&\s*\}\s*;",
-    r"curl\s+.*-d\s+@",
-    r"wget\s+.*--post-file",
-    r"shutdown\b",
-    r"reboot\b",
-    r"reg\s+(delete|add)\s+HKLM",
-    r"chmod\s+777\s+/",
-    r"chown\s+.*\s+/",
-    r"cat\s+.*(\.ssh|\.gnupg|credentials|shadow|passwd)",
-    r"type\s+.*\\(\.ssh|credentials)",
-    r"(?:^|[;&|])\s*cd\s+\.\.",
-    r"(?:^|[;&|])\s*pushd\s+\.\.",
-]
+from __future__ import annotations
 
-BLOCKED_REGEX = [re.compile(p, re.IGNORECASE) for p in BLOCKED_PATTERNS]
+from pathlib import Path
+
+from src.workspace.base import CommandResult, Workspace
+from src.workspace.local import LocalWorkspace
 
 
-def _is_command_blocked(command):
-    for pattern in BLOCKED_REGEX:
-        if pattern.search(command):
-            return True
-    return False
-
-
-def run_command(working_directory, command, timeout=30):
-    """
-    Executes a shell command in the working directory.
-    """
-    # Security: validate working directory exists and is accessible
-    if not working_directory:
-        return "Error: Working directory is not set"
-    wd_abs = os.path.realpath(working_directory)
-    if not os.path.isdir(wd_abs):
-        return f'Error: Working directory does not exist: "{working_directory}"'
-
-    # Security: block dangerous commands
-    if _is_command_blocked(command):
-        return "Error: This command has been blocked for safety reasons. It matches a dangerous pattern."
+async def run_command(
+    workspace: Workspace | Path | str,
+    command: str,
+    timeout: int = 30,
+) -> str:
+    """Executes a shell command inside the workspace."""
+    if isinstance(workspace, (str, Path)):
+        ws: Workspace = LocalWorkspace(workspace_id="local", root_dir=workspace)
+    else:
+        ws = workspace
 
     try:
-        result = subprocess.run(
-            command,
-            shell=True,
-            cwd=wd_abs,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-
-        output_parts = []
-        if result.stdout.strip():
-            stdout = result.stdout.strip()
-            if len(stdout) > 5000:
-                stdout = stdout[:5000] + "\n...(truncated)"
-            output_parts.append(f"STDOUT:\n{stdout}")
-        if result.stderr.strip():
-            stderr = result.stderr.strip()
-            if len(stderr) > 2000:
-                stderr = stderr[:2000] + "\n...(truncated)"
-            output_parts.append(f"STDERR:\n{stderr}")
-
-        output_parts.append(f"EXIT CODE: {result.returncode}")
-
-        return (
-            "\n".join(output_parts)
-            if output_parts
-            else f"Command completed (exit code {result.returncode})"
-        )
-
-    except subprocess.TimeoutExpired:
-        return f"Error: Command timed out after {timeout} seconds"
+        result: CommandResult = await ws.execute_command(command, timeout=timeout)
+        return result.to_formatted_output()
     except Exception as e:
         return f"Error executing command: {e}"
 
@@ -88,13 +30,17 @@ schema_run_command = {
     "type": "function",
     "function": {
         "name": "run_command",
-        "description": "Run a shell command in the workspace. Use for: pip install, npm, git, build tools.",
+        "description": (
+            "Run a shell command in the workspace. Use for: uv add, npm, git, build tools."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
                 "command": {
                     "type": "string",
-                    "description": "Shell command to execute (e.g., 'pip install flask' or 'npm test').",
+                    "description": (
+                        "Shell command to execute (e.g. 'uv add fastapi' or 'npm test')."
+                    ),
                 },
                 "timeout": {
                     "type": "integer",
