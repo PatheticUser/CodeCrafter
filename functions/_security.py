@@ -6,10 +6,9 @@ to prevent symlink-escape attacks.
 """
 
 import os
-from typing import Optional
 
 
-def validate_path(working_directory: str, target_path: str) -> Optional[str]:
+def validate_path(working_directory: str, target_path: str) -> str | None:
     """Validate that *target_path* (relative) is confined within *working_directory*.
 
     Resolves symlinks via ``realpath`` to prevent symlink-based escapes.
@@ -36,7 +35,7 @@ def validate_path(working_directory: str, target_path: str) -> Optional[str]:
     return None
 
 
-def validate_directory(working_directory: str, target_dir: str) -> Optional[str]:
+def validate_directory(working_directory: str, target_dir: str) -> str | None:
     """Validate that *target_dir* is a real directory confined within *working_directory*.
 
     Args:
@@ -57,7 +56,7 @@ def validate_directory(working_directory: str, target_dir: str) -> Optional[str]
     return None
 
 
-def validate_working_directory(working_directory: str) -> Optional[str]:
+def validate_working_directory(working_directory: str) -> str | None:
     """Validate that the working directory itself is set and exists.
 
     Returns:

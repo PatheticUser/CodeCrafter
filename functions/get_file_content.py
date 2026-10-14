@@ -29,7 +29,7 @@ def get_file_content(working_directory, file_path, start_line=None, end_line=Non
         return f'Error: File not found: "{file_path}"'
 
     try:
-        with open(target_file_abs, "r", encoding="utf-8", errors="ignore") as f:
+        with open(target_file_abs, encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
     except Exception as e:
         return f"Error: {e}"

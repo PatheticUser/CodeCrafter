@@ -1,4 +1,4 @@
-# =============================================================================
+# ============================================================================
 # CodeCrafter — Docker Compose for Oracle Cloud ARM64 (Ampere A1) + Caddy
 #
 #   docker compose --env-file .env.production up -d --build
@@ -11,6 +11,11 @@
 #     the dedicated internal bridge network, never from the host or internet.
 #   * Both services restart automatically, rotate logs, and expose healthchecks.
 #
+#   * No host Docker socket inside execution containers (security).
+#   * No privileged containers.
+#   * Resource limits enforced.
+#   * Non-root user execution.
+#
 # All runtime secrets/keys live in .env.production (see .env.production notes),
 # injected via `env_file` — nothing is baked into the image.
 # =============================================================================
@@ -19,7 +24,7 @@ name: codecrafter
 
 # Shared log rotation: cap each container at 5 × 10 MB to protect the
 # small Always Free VM disk from unbounded json-file log growth.
-x-logging: &default-logging
+x-default-logging &default-logging
   driver: json-file
   options:
     max-size: "10m"
@@ -41,7 +46,7 @@ services:
     # UVICORN_WORKERS comes from .env.production (defaults to 1).
     # --proxy-headers honors Caddy's X-Forwarded-* (safe: only Caddy can reach
     # this port on the backend network), so access logs show real client IPs.
-    command: >
+    command: >-
       /app/.venv/bin/uvicorn src.api.app:app
       --host 0.0.0.0
       --port 8000
@@ -84,6 +89,19 @@ services:
     security_opt:
       - no-new-privileges:true
 
+    # Resource limits for Oracle Cloud ARM64 (Ampere A1)
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+    # Run as non-root user for security
+    user: "1001:1001"
+
   # ── Reverse proxy (automatic Let's Encrypt TLS + WebSocket/SSE) ───────────
   caddy:
     image: caddy:2            # official multi-arch image (amd64 + arm64)
@@ -125,6 +143,14 @@ services:
 
     security_opt:
       - no-new-privileges:true
+
+    # Drop capabilities that are not needed
+    cap_drop:
+      - ALL
+
+    # But keep NET_BIND_SERVICE for port binding
+    cap_add:
+      - NET_BIND_SERVICE
 
 networks:
   # Dedicated bridge network — app is only reachable by Caddy here.

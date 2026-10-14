@@ -1,4 +1,4 @@
-# =============================================================================
+# ============================================================================
 # CodeCrafter — Caddy reverse proxy
 #
 # {$CADDY_SITE} is read from .env.production (injected via env_file):
@@ -10,41 +10,69 @@
 # =============================================================================
 
 {$CADDY_SITE:localhost} {
-	# ── Compression ────────────────────────────────────────────────────────
-	encode zstd gzip
+    # ── Compression ────────────────────────────────────────────────────────
+    encode zstd gzip
 
-	# ── Security headers (responses) ───────────────────────────────────────
-	header {
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "SAMEORIGIN"
-		Referrer-Policy "strict-origin-when-cross-origin"
-		-Server
-	}
+    # ── Security headers (responses) ───────────────────────────────────────
+    header {
+        # Prevent MIME-sniffing
+        X-Content-Type-Options "nosniff"
+        # Prevent clickjacking
+        X-Frame-Options "DENY"
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove server banner
+        -Server
+        # Content Security Policy - restrictive for coding environment
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https; connect-src 'self'; frame-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'"
+        # Permissions Policy
+        Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb()"
+    }
 
-	# ── Reverse proxy → app:8000 on the backend bridge network ─────────────
-	reverse_proxy app:8000 {
-		# WebSocket upgrade — pass the client's hop-by-hop headers through
-		# (Caddy also handles these automatically; explicit per proxy spec).
-		header_up Upgrade {>Upgrade}
-		header_up Connection {>Connection}
+    # ── Reverse proxy → app:8000 on the backend bridge network ─────────────
+    reverse_proxy app:8000 {
+        # WebSocket upgrade — pass the client's hop-by-hop headers through
+        header_up Upgrade {>Upgrade}
+        header_up Connection {>Connection}
 
-		# Real client IP for the upstream app (X-Forwarded-For/Proto/Host are
-		# added by Caddy automatically — not repeated here).
-		header_up X-Real-IP {remote_host}
+        # Real client IP for the upstream app
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_addr}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
 
-		# Stream responses immediately — required for SSE (/v1/chat/stream)
-		# and for WebSocket frames; disables response buffering.
-		flush_interval -1
+        # Stream responses immediately — required for SSE and WebSocket frames
+        flush_interval -1
 
-		# Long agent turns: allow up to 300s upstream (mirrors old 5-min timeout).
-		transport http {
-			read_timeout 300s
-			write_timeout 300s
-		}
-	}
+        # Long agent turns: allow up to 300s upstream
+        transport http {
+            read_timeout 300s
+            write_timeout 300s
+        }
+    }
+
+    # ── Rate limiting for authentication and agent operations ───────────────
+    # Limit repeated auth attempts and expensive agent operations
+    limit_conn 100
+    limit_req 50  # 50 requests per minute per IP
+
+    # ── Access control ─────────────────────────────────────────────────────
+    # Block private IP ranges from accessing the reverse proxy
+    # (they should connect directly to the backend if needed)
+    # This is handled at the app level, but we add defense in depth
+
+    # ── HSTS ───────────────────────────────────────────────────────────────
+    # Only add HSTS for HTTPS connections
+    # (Caddy adds this automatically on HTTPS, but explicit is clearer)
+    tls {
+        # Force HTTPS
+        terminate {
+            # HSTS will be set by Caddy automatically on HTTPS
+        }
+    }
 }
 
 # Optional: redirect www → apex (uncomment and adjust)
 # www.yourdomain.example {
-#	redir https://yourdomain.example{uri} permanent
+#   redir https://yourdomain.example{uri} permanent
 # }

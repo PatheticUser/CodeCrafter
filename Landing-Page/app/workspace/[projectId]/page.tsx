@@ -10,6 +10,7 @@ import { FileExplorer, type FileChangeKind } from "@/components/workspace/file-e
 import { CodeEditor, type EditorTab } from "@/components/workspace/code-editor";
 import { AgentChat, type ChatItem } from "@/components/workspace/agent-chat";
 import { ExecutionPanel, type ExecutionEntry } from "@/components/workspace/execution-panel";
+import { PreviewPanel } from "@/components/workspace/preview-panel";
 import { api, ApiError, type AgentEvent, type FileMeta, type Project } from "@/lib/codecrafter";
 import { useRunEvents, isTerminal } from "@/lib/run-stream";
 
@@ -38,7 +39,11 @@ export default function ProjectEnvironment() {
   const [execEntries, setExecEntries] = useState<ExecutionEntry[]>([]);
   const [runStatus, setRunStatus] = useState<RunStatus>("idle");
   const [statusLabel, setStatusLabel] = useState("Ready");
+
   const [runId, setRunId] = useState<string | null>(null);
+  const [previewStatus, setPreviewStatus] = useState<"stopped" | "starting" | "running" | "failed" | "stopping>("stopped");
+  const [previewPort, setPreviewPort] = useState<number | null>(null);
+  const [previewFramework, setPreviewFramework] = useState<string | null>(null);
 
   const runIdRef = useRef<string | null>(null);
   runIdRef.current = runId;
@@ -247,6 +252,49 @@ export default function ProjectEnvironment() {
 
   useRunEvents(runId, handleEvent);
 
+  // ── Preview status polling ──────────────────────────────────────────────────
+  const pollPreviewStatus = useCallback(async () => {
+    try {
+      const response = await fetch("/api/projects/" + projectId + "/preview/status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ project_id: projectId }),
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const preview = data.preview;
+
+      if (preview && preview.status) {
+        setPreviewStatus(preview.status);
+        setPreviewPort(preview.port ?? null);
+        setPreviewFramework(preview.framework ?? null);
+      }
+
+      // Stop polling if preview is stopped or failed
+      if (preview.status === "stopped" || preview.status === "failed") {
+        // No need to stop polling explicitly - just don't update state
+      }
+    } catch (error) {
+      console.error("Preview status poll error:", error);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    // Start polling when a run is active
+    let pollingId: NodeJS.Timeout | null = null;
+    if (runStatus === "running" || runStatus === "pending") {
+      pollingId = setInterval(pollPreviewStatus, 3000);
+      pollPreviewStatus();
+    }
+    return () => {
+      if (pollingId) clearInterval(pollPreviewStatus);
+    };
+  }, [runStatus, pollPreviewStatus, projectId]);
+
   // ── Chat actions ───────────────────────────────────────────────────────────
   const startRun = useCallback(
     async (prompt: string) => {
@@ -330,17 +378,6 @@ export default function ProjectEnvironment() {
   );
 
   const statusBadge = useMemo(() => statusLabel, [statusLabel]);
-
-  if (loadError && !project) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background">
-        <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        <Button asChild variant="outline" className="gap-1.5">
-          <Link href="/workspace"><ArrowLeft className="h-4 w-4" /> Back to projects</Link>
-        </Button>
-      </div>
-    );
-  }
 
   const terminalRun = runId !== null && (runStatus === "completed" || runStatus === "failed" || runStatus === "cancelled");
 
@@ -426,6 +463,37 @@ export default function ProjectEnvironment() {
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+
+      {/* Live preview panel */}
+      <PreviewPanel
+        projectId={projectId}
+        runId={runId}
+        runStatus={runStatus}
+        previewStatus={previewStatus}
+        previewPort={previewPort}
+        previewFramework={previewFramework}
+        onStop={() => {
+          // Stop the preview via API
+          fetch("/api/projects/" + projectId + "/preview/stop", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ project_id: projectId }),
+          });
+          setPreviewStatus("stopped");
+        }}
+        onRestart={() => {
+          // Restart the preview via API
+          fetch("/api/projects/" + projectId + "/preview/start", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ project_id: projectId }),
+          });
+        }}
+      />
     </div>
   );
 }

@@ -87,10 +87,28 @@ class Database:
                 FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS previews (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                run_id TEXT,
+                status TEXT NOT NULL DEFAULT 'stopped',
+                port INTEGER,
+                container_id TEXT,
+                framework TEXT,
+                started_at TEXT,
+                stopped_at TEXT,
+                url_path TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE SET NULL
+            );
+
             CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_id);
             CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
             CREATE INDEX IF NOT EXISTS idx_runs_session ON runs(session_id);
-            CREATE INDEX IF NOT EXISTS idx_events_run ON events(run_id, sequence);
+            CREATE INDEX IF NOT EXISTS idx_previews_project ON previews(project_id);
+            CREATE INDEX IF NOT EXISTS idx_previews_status ON previews(status);
             """)
 
     # ── Projects ──────────────────────────────────────────────────────────────
@@ -373,6 +391,111 @@ class Database:
                         }
                     )
                 return results
+
+        return await asyncio.to_thread(_run)
+
+    # ── Previews ──────────────────────────────────────────────────────────────
+
+    async def create_preview(
+        self,
+        preview_id: str,
+        project_id: str,
+        run_id: str | None,
+        status: str = "stopped",
+        port: int | None = None,
+        container_id: str | None = None,
+        framework: str | None = None,
+        url_path: str | None = None,
+    ) -> dict[str, Any]:
+        now = _utc_now()
+
+        def _run():
+            with self._get_connection() as conn:
+                conn.execute(
+                    """INSERT INTO previews
+                        (id, project_id, run_id, status, port,
+                         container_id, framework, url_path, started_at, updated_at, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        preview_id,
+                        project_id,
+                        run_id,
+                        status,
+                        port,
+                        container_id,
+                        framework,
+                        url_path,
+                        now if status != "stopped" else None,
+                        now,
+                        now,
+                    ),
+                )
+            return {
+                "id": preview_id,
+                "project_id": project_id,
+                "run_id": run_id,
+                "status": status,
+                "port": port,
+                "container_id": container_id,
+                "framework": framework,
+                "url_path": url_path,
+                "started_at": now if status != "stopped" else None,
+                "updated_at": now,
+                "created_at": now,
+            }
+
+        return await asyncio.to_thread(_run)
+
+    async def get_preview(self, preview_id: str) -> dict[str, Any] | None:
+        def _run():
+            with self._get_connection() as conn:
+                cur = conn.execute("SELECT * FROM previews WHERE id = ?", (preview_id,))
+                row = cur.fetchone()
+                return dict(row) if row else None
+
+        return await asyncio.to_thread(_run)
+
+    async def list_previews(self, project_id: str) -> list[dict[str, Any]]:
+        def _run():
+            with self._get_connection() as conn:
+                cur = conn.execute(
+                    "SELECT * FROM previews WHERE project_id = ? ORDER BY started_at DESC",
+                    (project_id,),
+                )
+                return [dict(r) for r in cur.fetchall()]
+
+        return await asyncio.to_thread(_run)
+
+    async def update_preview_status(
+        self,
+        preview_id: str,
+        status: str,
+        port: int | None = None,
+        container_id: str | None = None,
+    ) -> None:
+        now = _utc_now()
+        fields = ["status = ?", "updated_at = ?"]
+        params = [status, now]
+        if port is not None:
+            fields.append("port = ?")
+            params.append(port)
+        if container_id is not None:
+            fields.append("container_id = ?")
+            params.append(container_id)
+        params.append(preview_id)
+
+        def _run():
+            with self._get_connection() as conn:
+                query = f"UPDATE previews SET {', '.join(fields)} WHERE id = ?"
+                conn.execute(query, params)
+
+        await asyncio.to_thread(_run)
+
+    async def delete_preview(self, preview_id: str) -> bool:
+        def _run():
+            with self._get_connection() as conn:
+                cur = conn.execute("DELETE FROM previews WHERE id = ?", (preview_id,))
+                return cur.rowcount > 0
 
         return await asyncio.to_thread(_run)
 

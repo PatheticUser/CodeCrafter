@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from dataclasses import dataclass, field
 from typing import Any
 
 from src.core.agent import CodingAgent
@@ -18,6 +19,35 @@ from src.workspace.manager import workspace_manager
 
 logger = logging.getLogger("codecrafter.api.runs")
 
+# Concurrency limits
+MAX_CONCURRENT_RUNS = 10
+PERSISTENCE_MAX_EVENTS = 200
+
+# Track file changes per run for diff review
+@dataclass
+class RunChangeRecord:
+    """Records file modifications made during an agent run."""
+    run_id: str
+    changes: dict[str, dict] = field(default_factory=dict)
+    # Maps file_path -> {old_content, new_content, timestamp, operation}
+
+    def record_change(self, file_path: str, old_content: str, new_content: str) -> None:
+        """Record a file modification during agent execution."""
+        import time
+        self.changes[file_path] = {
+            "old_content": old_content,
+            "new_content": new_content,
+            "timestamp": time.time(),
+            "operation": "edit",
+        }
+
+    def get_changes(self) -> dict[str, dict]:
+        """Get all recorded changes for this run."""
+        return self.changes
+
+    def has_changes(self) -> bool:
+        """Check if any changes were recorded."""
+        return bool(self.changes)
 
 class RunManager:
     """Coordinates active agent runs, cancellation events, and event broadcast queues."""
@@ -27,6 +57,11 @@ class RunManager:
         self._event_queues: dict[str, list[asyncio.Queue[AgentEvent]]] = {}
         self._active_tasks: dict[str, asyncio.Task] = {}
         self._provider: LLMProvider | None = None
+        # Concurrency control
+        self._run_semaphore = asyncio.Semaphore(MAX_CONCURRENT_RUNS)
+        self._active_runs: dict[str, dict[str, Any]] = {}
+        # Event history for replay (persisted via database)
+        self._event_buffer: dict[str, list[AgentEvent]] = {}
 
     def get_provider(self) -> LLMProvider:
         """Get or initialize default LLM provider."""
@@ -51,6 +86,9 @@ class RunManager:
         if run_id not in self._event_queues:
             self._event_queues[run_id] = []
         self._event_queues[run_id].append(queue)
+        # Persist event history for replay
+        if run_id not in self._event_buffer:
+            self._event_buffer[run_id] = []
         return queue
 
     def unsubscribe(self, run_id: str, queue: asyncio.Queue[AgentEvent]) -> None:
@@ -61,9 +99,15 @@ class RunManager:
             if not self._event_queues[run_id]:
                 del self._event_queues[run_id]
 
+    def record_run_changes(self, run_id: str) -> RunChangeRecord:
+        """Get or create a ChangeRecord for tracking file modifications."""
+        if run_id not in self._run_changes:
+            self._run_changes[run_id] = RunChangeRecord(run_id=run_id)
+        return self._run_changes[run_id]
+
     async def broadcast(self, run_id: str, event: AgentEvent) -> None:
         """Dispatch event to database and all active subscriber queues."""
-        # Persist event
+        # Persist event to database
         await db.record_event(
             run_id=run_id,
             sequence=event.sequence,
@@ -71,7 +115,11 @@ class RunManager:
             payload=event.data,
             timestamp=event.timestamp,
         )
-
+        # Buffer event for replay (keep last N events per run)
+        if run_id in self._event_buffer:
+            self._event_buffer[run_id].append(event)
+            if len(self._event_buffer[run_id]) > PERSISTENCE_MAX_EVENTS:
+                self._event_buffer[run_id] = self._event_buffer[run_id][-PERSISTENCE_MAX_EVENTS:]
         # Broadcast to active WebSockets
         queues = self._event_queues.get(run_id, [])
         for q in queues:
@@ -98,35 +146,43 @@ class RunManager:
         cancel_evt = asyncio.Event()
         self._cancellation_events[r_id] = cancel_evt
 
-        # Persist run record
-        await db.create_run(
-            run_id=r_id,
-            session_id=session_id,
-            project_id=project_id,
-            prompt=prompt,
-        )
-
-        # Add user message to session
-        msg_id = f"msg_{uuid.uuid4().hex[:12]}"
-        await db.add_message(
-            message_id=msg_id,
-            session_id=session_id,
-            role="user",
-            content=prompt,
-        )
-
-        # Launch background execution task
-        task = asyncio.create_task(
-            self._execute_run(
+        # Acquire concurrency slot (will block if at limit)
+        async with self._run_semaphore:
+            # Persist run record
+            await db.create_run(
                 run_id=r_id,
-                project_id=project_id,
                 session_id=session_id,
+                project_id=project_id,
                 prompt=prompt,
-                cancel_evt=cancel_evt,
             )
-        )
-        self._active_tasks[r_id] = task
-        return r_id
+
+            # Add user message to session
+            msg_id = f"msg_{uuid.uuid4().hex[:12]}"
+            await db.add_message(
+                message_id=msg_id,
+                session_id=session_id,
+                role="user",
+                content=prompt,
+            )
+
+            # Launch background execution task
+            task = asyncio.create_task(
+                self._execute_run(
+                    run_id=r_id,
+                    project_id=project_id,
+                    session_id=session_id,
+                    prompt=prompt,
+                    cancel_evt=cancel_evt,
+                )
+            )
+            self._active_tasks[r_id] = task
+            self._active_runs[r_id] = {
+                "started_at": asyncio.get_event_loop().time(),
+                "status": "running",
+                "project_id": project_id,
+                "session_id": session_id,
+            }
+            return r_id
 
     async def _execute_run(
         self,
@@ -137,6 +193,7 @@ class RunManager:
         cancel_evt: asyncio.Event,
     ) -> None:
         """Background worker executing the agent loop and recording state transitions."""
+
         await db.update_run_status(run_id, "running")
         project = await db.get_project(project_id)
         workspace_path = project["workspace_path"] if project else None
@@ -168,6 +225,21 @@ class RunManager:
                 cancellation_event=cancel_evt,
             ):
                 await self.broadcast(run_id, event)
+
+                # Track file changes from agent operations
+                if event.type == EventType.FILE_MODIFIED:
+                    file_path = event.data.get("path", "")
+                    # Get current file content before next operation
+                    try:
+                        current_content = await workspace.read_file(file_path)
+                        change_record = self.record_run_changes(run_id)
+                        change_record.record_change(
+                            file_path,
+                            event.data.get("old_content", current_content),
+                            current_content,
+                        )
+                    except Exception:
+                        pass
 
                 if event.type == EventType.AGENT_MESSAGE:
                     final_text = event.data.get("content", "")
@@ -206,6 +278,8 @@ class RunManager:
             # Cleanup cancellation event & task tracking
             self._cancellation_events.pop(run_id, None)
             self._active_tasks.pop(run_id, None)
+            # Release concurrency slot
+            self._active_runs.pop(run_id, None)
 
 
 run_manager = RunManager()

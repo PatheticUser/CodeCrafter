@@ -1,6 +1,5 @@
 """Configuration adapter preserving backwards compatibility with src.core.settings."""
 
-import os
 from src.core.settings import settings
 
 VERSION = settings.APP_VERSION

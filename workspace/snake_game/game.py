@@ -1,6 +1,8 @@
-import pygame
-import sys
 import random
+import sys
+
+import pygame
+
 
 class SnakeGame:
     def __init__(self):
@@ -11,10 +13,10 @@ class SnakeGame:
         self.direction = 'right'
         self.apple = self.set_apple()
         self.score = 0
-    
+
     def set_apple(self):
         return (random.randint(0, 780) // 20 * 20, random.randint(0, 580) // 20 * 20)
-    
+
     def update(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -49,7 +51,7 @@ class SnakeGame:
             self.snake[-1] in self.snake[:-1]):
             pygame.quit()
             sys.exit()
-    
+
     def draw(self):
         # Light theme colors
         self.screen.fill((255, 255, 255))

@@ -2,7 +2,7 @@
 
 import os
 
-from config import WORKING_DIR, MAX_TREE_ITEMS
+from config import MAX_TREE_ITEMS, WORKING_DIR
 
 
 def scan_workspace_tree(directory=None):

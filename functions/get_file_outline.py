@@ -29,7 +29,7 @@ def get_file_outline(working_directory, file_path):
 
     # --- Read file ---
     try:
-        with open(target_file_abs, "r", encoding="utf-8", errors="ignore") as f:
+        with open(target_file_abs, encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
     except Exception as e:
         return f"Error reading {file_path}: {e}"
@@ -184,7 +184,7 @@ def get_file_outline(working_directory, file_path):
         for i, line in enumerate(lines[:10], 1):
             output_parts.append(f"  L{i}: {line.rstrip()}")
         output_parts.append(f"\n  ... ({total_lines - 15} lines omitted) ...\n")
-        output_parts.append(f"Preview (last 5 lines):")
+        output_parts.append("Preview (last 5 lines):")
         for i, line in enumerate(lines[-5:], total_lines - 4):
             output_parts.append(f"  L{i}: {line.rstrip()}")
 

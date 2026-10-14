@@ -1,5 +1,5 @@
-import os
 import difflib
+import os
 
 from functions._security import validate_path
 
@@ -47,7 +47,7 @@ def edit_file(working_directory, file_path, old_content, new_content):
 
     # --- Read current content ---
     try:
-        with open(target_file_abs, "r", encoding="utf-8") as f:
+        with open(target_file_abs, encoding="utf-8") as f:
             content = f.read()
     except Exception as e:
         return f"Error reading {file_path}: {e}"

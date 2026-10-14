@@ -1,7 +1,6 @@
-import subprocess
-import re
 import os
-
+import re
+import subprocess
 
 # Dangerous command patterns — block these to prevent destructive operations
 # and path traversal outside the workspace

@@ -1,6 +1,7 @@
+
 import pygame
-import sys
 from game import SnakeGame
+
 
 def main():
     pygame.init()

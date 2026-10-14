@@ -101,7 +101,7 @@ def search_files(
             relative_path = os.path.relpath(file_path, working_dir_abs)
 
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     for line_num, line in enumerate(f, 1):
                         if regex.search(line):
                             line_preview = line.rstrip()

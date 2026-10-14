@@ -1,11 +1,9 @@
 import os
-import sys
 import subprocess
+import sys
 import webbrowser
-import json
 
 from functions._security import validate_path
-
 
 # Language configuration: extension -> (compile_cmd_template, run_cmd_template, needs_compile)
 LANGUAGE_MAP = {
